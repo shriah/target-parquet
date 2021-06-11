@@ -16,6 +16,12 @@ setup(
         "pyarrow==4.0.1",
         "psutil==5.8",
     ],
+    extras_require={
+        'dev': [
+            'pytest==6.2.4',
+            'pandas==1.2.4'
+        ]
+    },
     entry_points="""
           [console_scripts]
           target-parquet=target_parquet:main
