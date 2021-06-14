@@ -117,7 +117,7 @@ def persist_messages(
                 message_type = message["type"]
                 if message_type == "RECORD":
                     if message["stream"] not in schemas:
-                        raise Exception(
+                        raise ValueError(
                             "A record for stream {} was encountered before a corresponding schema".format(
                                 message["stream"]
                             )
@@ -196,8 +196,6 @@ def persist_messages(
                 current_stream_name = stream_name
                 if type(records.get(stream_name)) != list:
                     records[stream_name] = [record]
-                    if stream_name not in schemas:
-                        LOGGER.warning(f'Missing schema from {stream_name} record')
                 else:
                     records[stream_name].append(record)
                     if (file_size > 0) and \
