@@ -53,3 +53,7 @@ def test_flatten_schema():
 
     output = flatten_schema(in_dict)
     assert output == expected
+
+def test_flatten_schema_empty():
+    in_dict = dict()
+    assert list() == flatten_schema(in_dict)
