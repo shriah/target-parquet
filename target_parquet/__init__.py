@@ -6,9 +6,10 @@ import http.client
 import simplejson as json
 from jsonschema.validators import Draft4Validator
 import os
-import pandas as pd
 import pkg_resources
 import pyarrow as pa
+from pyarrow import compute
+from pyarrow.parquet import ParquetWriter
 import singer
 import sys
 import urllib
@@ -16,15 +17,30 @@ import psutil
 import time
 import threading
 import gc
+from enum import Enum
 from multiprocessing import Process, Queue
 
-from .helpers import flatten
+from .helpers import flatten, flatten_schema
 
 _all__ = ["main"]
 
 LOGGER = singer.get_logger()
 LOGGER.setLevel(os.getenv("LOGGER_LEVEL", "INFO"))
 
+def create_dataframe(list_dict, fields):
+    {f: [row.get(f) for row in list_dict] for f in fields}
+    dataframe = pa.table({f: [row.get(f) for row in list_dict] for f in fields})
+    dataframe = dataframe.select([k for k in fields
+                                  if not compute.all(
+                                      dataframe.column(k).is_null()).as_py()])
+    return dataframe
+
+
+class MessageType(Enum):
+    RECORD = 1
+    STATE  = 2
+    SCHEMA = 3
+    EOF    = 4
 
 def emit_state(state):
     if state is not None:
@@ -101,7 +117,7 @@ def persist_messages(
                 message_type = message["type"]
                 if message_type == "RECORD":
                     if message["stream"] not in schemas:
-                        raise Exception(
+                        raise ValueError(
                             "A record for stream {} was encountered before a corresponding schema".format(
                                 message["stream"]
                             )
@@ -110,31 +126,34 @@ def persist_messages(
                     validators[message["stream"]].validate(message["record"])
                     flattened_record = flatten(message["record"])
                     # Once the record is flattenned, it is added to the final record list, which will be stored in the parquet file.
-                    w_queue.put((stream_name, flattened_record))
+                    w_queue.put((MessageType.RECORD, stream_name, flattened_record))
                     state = None
                 elif message_type == "STATE":
                     LOGGER.debug("Setting state to {}".format(message["value"]))
                     state = message["value"]
                 elif message_type == "SCHEMA":
                     stream = message["stream"]
-                    schemas[stream] = message["schema"]
                     validators[stream] = Draft4Validator(message["schema"])
+                    schemas[stream] = flatten_schema(message["schema"]["properties"])
+                    LOGGER.debug(f"Schema: {schemas[stream]}")
                     key_properties[stream] = message["key_properties"]
+                    w_queue.put((MessageType.SCHEMA, stream, schemas[stream]))
                 else:
                     LOGGER.warning(
                         "Unknown message type {} in message {}".format(
                             message["type"], message
                         )
                     )
-            w_queue.put((_break_object, None))
+            w_queue.put((MessageType.EOF, _break_object, None))
             return state
         except Exception as Err:
-            w_queue.put((_break_object, None))
+            w_queue.put((MessageType.EOF, _break_object, None))
             raise Err
 
-    def write_file(current_stream_name, record):
+    def write_file(current_stream_name, record, schema):
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S-%f")
-        dataframe = pd.DataFrame(record)
+        LOGGER.debug(f"Writting files from {current_stream_name} stream")
+        dataframe = create_dataframe(record, schema)
         if streams_in_separate_folder and not os.path.exists(
             os.path.join(destination_path, current_stream_name)
         ):
@@ -147,7 +166,9 @@ def persist_messages(
             + ".parquet"
         )
         filepath = os.path.expanduser(os.path.join(destination_path, filename))
-        dataframe.to_parquet(filepath, engine="pyarrow", compression=compression_method)
+        ParquetWriter(filepath,
+                      dataframe.schema,
+                      compression=compression_method).write_table(dataframe)
         ## explicit memory management. This can be usefull when working on very large data groups
         del dataframe
         return filepath
@@ -157,42 +178,49 @@ def persist_messages(
         current_stream_name = None
         # records is a list of dictionary of lists of dictionaries that will contain the records that are retrieved from the tap
         records = {}
+        schemas = {}
 
         while True:
-            (stream_name, record) = receiver.get()  # q.get()
-            if type(stream_name) is object:
+            (message_type, stream_name, record) = receiver.get()  # q.get()
+            if message_type == MessageType.RECORD:
+                if (stream_name != current_stream_name) and (current_stream_name != None):
+                    files_created.append(
+                        write_file(
+                            current_stream_name,
+                            records.pop(current_stream_name),
+                            schemas[current_stream_name]
+                        )
+                    )
+                    ## explicit memory management. This can be usefull when working on very large data groups
+                    gc.collect()
+                current_stream_name = stream_name
+                if type(records.get(stream_name)) != list:
+                    records[stream_name] = [record]
+                else:
+                    records[stream_name].append(record)
+                    if (file_size > 0) and \
+                    (not len(records[stream_name]) % file_size):
+                        files_created.append(
+                            write_file(
+                                current_stream_name,
+                                records.pop(current_stream_name),
+                                schemas[current_stream_name]
+                            )
+                        )
+                        gc.collect()
+            elif message_type == MessageType.SCHEMA:
+                schemas[stream_name] = record
+            elif message_type == MessageType.EOF:
                 files_created.append(
                     write_file(
                         current_stream_name,
                         records.pop(current_stream_name),
+                        schemas[current_stream_name]
                     )
                 )
                 LOGGER.info(f"Wrote {len(files_created)} files")
                 LOGGER.debug(f"Wrote {files_created} files")
                 break
-            if (stream_name != current_stream_name) and (current_stream_name != None):
-                files_created.append(
-                    write_file(
-                        current_stream_name,
-                        records.pop(current_stream_name),
-                    )
-                )
-                ## explicit memory management. This can be usefull when working on very large data groups
-                gc.collect()
-            current_stream_name = stream_name
-            if type(records.get(stream_name)) != list:
-                records[stream_name] = [record]
-            else:
-                records[stream_name].append(record)
-                if (file_size > 0) and \
-                   (not len(records[stream_name]) % file_size):
-                    files_created.append(
-                        write_file(
-                            current_stream_name,
-                            records.pop(current_stream_name),
-                        )
-                    )
-                    gc.collect()
 
     q = Queue()
     t2 = Process(

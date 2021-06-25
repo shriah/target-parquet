@@ -63,3 +63,18 @@ There are two ways to set the logging level. If both are set, the config file ha
 [exchangeratesapi]: https://github.com/singer-io/tap-exchangeratesapi
 [mac]: http://docs.python-guide.org/en/latest/starting/install3/osx/
 [linux]: https://docs.python-guide.org/starting/install3/linux/
+
+
+### Development
+
+To install development required packages run
+
+```bash
+pip install -e ".[dev]"
+```
+
+In order to run all tests run
+
+```bash
+pytest
+```
