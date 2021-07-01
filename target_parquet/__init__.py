@@ -109,6 +109,7 @@ def persist_messages(
         state = None
         try:
             for message in message_buffer:
+                LOGGER.debug(f"target-parquet got message: {message}")
                 try:
                     message = singer.parse_message(message).asdict()
                 except json.decoder.JSONDecodeError:
