@@ -54,6 +54,57 @@ def test_flatten_schema():
     output = flatten_schema(in_dict)
     assert output == expected
 
+def test_flatten_schema_2():
+    in_dict = {
+        "id": {
+            "type": "integer"
+        },
+        "created_at": {
+            "type": "string",
+            "format": "date-time"
+        },
+        "updated_at": {
+            "type": "string",
+            "format": "date-time"
+        },
+        "email": {
+            "type": "string"
+        },
+        "last_surveyed": {
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "string",
+                    "format": "date-time"
+                }
+            ]
+        },
+        "external_created_at": {
+            "type": [
+                "integer",
+                "null"
+            ]
+        },
+        "page_views_count": {
+            "type": "integer"
+        }
+    }
+
+    expected = [
+        'id',
+        'created_at',
+        'updated_at',
+        'email',
+        'last_surveyed',
+        'external_created_at',
+        'page_views_count'
+    ]
+
+    output = flatten_schema(in_dict)
+    assert output == expected
+
 def test_flatten_schema_empty():
     in_dict = dict()
     assert list() == flatten_schema(in_dict)
