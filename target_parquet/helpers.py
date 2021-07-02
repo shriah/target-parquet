@@ -78,9 +78,9 @@ def flatten_schema(dictionary, parent_key="", sep="__"):
     items = []
     for k, v in dictionary.items():
         new_key = parent_key + sep + k if parent_key else k
-        if v.get("anyOf") is not None:
+        if "type" not in v:
             LOGGER.warning(
-                f'SCHEMA with not supported format on field {k}: {v}')
+                f'SCHEMA with limitted support on field {k}: {v}')
         if "object" in v.get("type", []):
             items.extend(flatten_schema(v.get("properties"),
                                  new_key,
