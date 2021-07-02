@@ -1,4 +1,5 @@
 import pytest
+import logging
 
 from target_parquet.helpers import flatten, flatten_schema
 
@@ -54,7 +55,7 @@ def test_flatten_schema():
     output = flatten_schema(in_dict)
     assert output == expected
 
-def test_flatten_schema_2():
+def test_flatten_schema_2(caplog):
     in_dict = {
         "id": {
             "type": "integer"
@@ -102,7 +103,11 @@ def test_flatten_schema_2():
         'page_views_count'
     ]
 
-    output = flatten_schema(in_dict)
+    with caplog.at_level(logging.WARNING):
+        output = flatten_schema(in_dict)
+        for record in caplog.records:
+            assert "SCHEMA with limitted support on field last_surveyed" \
+                in record.message
     assert output == expected
 
 def test_flatten_schema_empty():
