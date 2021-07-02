@@ -3,6 +3,11 @@ try:
 except ImportError:
     from collections import MutableMapping  # deprecated in Python 3.3
 
+import singer
+import os
+
+LOGGER = singer.get_logger()
+LOGGER.setLevel(os.getenv("LOGGER_LEVEL", "INFO"))
 
 def flatten(dictionary, parent_key="", sep="__"):
     """Function that flattens a nested structure, using the separater given as parameter, or uses '__' as default
@@ -73,7 +78,10 @@ def flatten_schema(dictionary, parent_key="", sep="__"):
     items = []
     for k, v in dictionary.items():
         new_key = parent_key + sep + k if parent_key else k
-        if v.get("type")[-1] == "object":
+        if v.get("anyOf") is not None:
+            LOGGER.warning(
+                f'SCHEMA with not supported format on field {k}: {v}')
+        if "object" in v.get("type", []):
             items.extend(flatten_schema(v.get("properties"),
                                  new_key,
                                  sep=sep))
