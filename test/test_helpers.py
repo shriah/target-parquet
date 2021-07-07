@@ -1,4 +1,5 @@
 import pytest
+import logging
 
 from target_parquet.helpers import flatten, flatten_schema
 
@@ -52,6 +53,61 @@ def test_flatten_schema():
     ]
 
     output = flatten_schema(in_dict)
+    assert output == expected
+
+def test_flatten_schema_2(caplog):
+    in_dict = {
+        "id": {
+            "type": "integer"
+        },
+        "created_at": {
+            "type": "string",
+            "format": "date-time"
+        },
+        "updated_at": {
+            "type": "string",
+            "format": "date-time"
+        },
+        "email": {
+            "type": "string"
+        },
+        "last_surveyed": {
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "string",
+                    "format": "date-time"
+                }
+            ]
+        },
+        "external_created_at": {
+            "type": [
+                "integer",
+                "null"
+            ]
+        },
+        "page_views_count": {
+            "type": "integer"
+        }
+    }
+
+    expected = [
+        'id',
+        'created_at',
+        'updated_at',
+        'email',
+        'last_surveyed',
+        'external_created_at',
+        'page_views_count'
+    ]
+
+    with caplog.at_level(logging.WARNING):
+        output = flatten_schema(in_dict)
+        for record in caplog.records:
+            assert "SCHEMA with limitted support on field last_surveyed" \
+                in record.message
     assert output == expected
 
 def test_flatten_schema_empty():

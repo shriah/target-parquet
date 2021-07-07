@@ -109,6 +109,7 @@ def persist_messages(
         state = None
         try:
             for message in message_buffer:
+                LOGGER.debug(f"target-parquet got message: {message}")
                 try:
                     message = singer.parse_message(message).asdict()
                 except json.decoder.JSONDecodeError:
@@ -166,9 +167,10 @@ def persist_messages(
             + ".parquet"
         )
         filepath = os.path.expanduser(os.path.join(destination_path, filename))
-        ParquetWriter(filepath,
-                      dataframe.schema,
-                      compression=compression_method).write_table(dataframe)
+        with open(filepath, 'wb') as f:
+            ParquetWriter(f,
+                        dataframe.schema,
+                        compression=compression_method).write_table(dataframe)
         ## explicit memory management. This can be usefull when working on very large data groups
         del dataframe
         return filepath
