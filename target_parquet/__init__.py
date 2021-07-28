@@ -27,12 +27,11 @@ _all__ = ["main"]
 LOGGER = singer.get_logger()
 LOGGER.setLevel(os.getenv("LOGGER_LEVEL", "INFO"))
 
-def create_dataframe(list_dict, fields):
-    {f: [row.get(f) for row in list_dict] for f in fields}
+def create_dataframe(list_dict):
+    fields = set()
+    for d in list_dict:
+        fields = fields.union(d.keys())
     dataframe = pa.table({f: [row.get(f) for row in list_dict] for f in fields})
-    dataframe = dataframe.select([k for k in fields
-                                  if not compute.all(
-                                      dataframe.column(k).is_null()).as_py()])
     return dataframe
 
 
@@ -151,10 +150,10 @@ def persist_messages(
             w_queue.put((MessageType.EOF, _break_object, None))
             raise Err
 
-    def write_file(current_stream_name, record, schema):
+    def write_file(current_stream_name, record):
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S-%f")
-        LOGGER.debug(f"Writting files from {current_stream_name} stream")
-        dataframe = create_dataframe(record, schema)
+        LOGGER.debug(f"Writing files from {current_stream_name} stream")
+        dataframe = create_dataframe(record)
         if streams_in_separate_folder and not os.path.exists(
             os.path.join(destination_path, current_stream_name)
         ):
@@ -189,8 +188,7 @@ def persist_messages(
                     files_created.append(
                         write_file(
                             current_stream_name,
-                            records.pop(current_stream_name),
-                            schemas[current_stream_name]
+                            records.pop(current_stream_name)
                         )
                     )
                     ## explicit memory management. This can be usefull when working on very large data groups
@@ -205,8 +203,7 @@ def persist_messages(
                         files_created.append(
                             write_file(
                                 current_stream_name,
-                                records.pop(current_stream_name),
-                                schemas[current_stream_name]
+                                records.pop(current_stream_name)
                             )
                         )
                         gc.collect()
@@ -216,8 +213,7 @@ def persist_messages(
                 files_created.append(
                     write_file(
                         current_stream_name,
-                        records.pop(current_stream_name),
-                        schemas[current_stream_name]
+                        records.pop(current_stream_name)
                     )
                 )
                 LOGGER.info(f"Wrote {len(files_created)} files")
