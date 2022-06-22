@@ -2,6 +2,8 @@
 
 A [Singer](https://singer.io) target that writes data to parquet files. This target is based on [`target-csv`] [Targetcsv] and the code was adapted to generate parquet files instead of csv files.
 
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 ## How to use it
 
 `target-parquet` works with a [Singer Tap] in order to move data ingested by the tap into parquet files.

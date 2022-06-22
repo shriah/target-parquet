@@ -16,17 +16,23 @@ from target_parquet import persist_messages
 #### TEMP DEBUG
 
 
-
 @pytest.fixture
 def expected_df_1():
-    return pa.table({
-        'str': ['value1', 'value2', 'value3'],
-        'int': [1, None, 3],
-        'decimal': [Decimal('0.1'), Decimal('0.2'), Decimal('0.3')],
-        'date': ['2021-06-11', '2021-06-12', '2021-06-13'],
-        'datetime': ['2021-06-11T00:00:00.000000Z', '2021-06-12T00:00:00.000000Z', '2021-06-13T00:00:00.000000Z'],
-        'boolean': [True, True, False]
-    }).to_pandas()
+    return pa.table(
+        {
+            "str": ["value1", "value2", "value3"],
+            "int": [1, None, 3],
+            "decimal": [Decimal("0.1"), Decimal("0.2"), Decimal("0.3")],
+            "date": ["2021-06-11", "2021-06-12", "2021-06-13"],
+            "datetime": [
+                "2021-06-11T00:00:00.000000Z",
+                "2021-06-12T00:00:00.000000Z",
+                "2021-06-13T00:00:00.000000Z",
+            ],
+            "boolean": [True, True, False],
+        }
+    ).to_pandas()
+
 
 @pytest.fixture
 def input_messages_1():
@@ -40,6 +46,7 @@ def input_messages_1():
 {"type": "STATE", "value": {"datetime": "2020-10-19"}}
 """
 
+
 @pytest.fixture
 def input_messages_1_reorder():
     return """\
@@ -51,6 +58,7 @@ def input_messages_1_reorder():
 {"type": "RECORD", "stream": "test", "record": {"str": "value3","int": 3,"decimal": 0.3,"date": "2021-06-13","datetime": "2021-06-13T00:00:00.000000Z","boolean": false}}
 {"type": "STATE", "value": {"datetime": "2020-10-19"}}
 """
+
 
 def test_persist_messages(input_messages_1, expected_df_1):
     # content of test_persist.expected.pkl based on : [{"CAD":1.3171828596,"HKD":7.7500212134,"ISK":138.6508273229,"PHP":48.5625795503,"DKK":6.3139584217,"HUF":309.7581671616,"CZK":23.2040729741,"GBP":0.7686720407,"RON":4.1381417056,"SEK":8.7889690284,"IDR":14720.101824353,"INR":73.3088672041,"BRL":5.6121340687,"RUB":77.5902418328,"HRK":6.4340263046,"JPY":105.311837081,"THB":31.1803139584,"CHF":0.9099703012,"EUR":0.8485362749,"MYR":4.1424692406,"BGN":1.6595672465,"TRY":7.8962240136,"CNY":6.6836656767,"NOK":9.2889266016,"NZD":1.5062367416,"ZAR":16.4451421298,"USD":1.0,"MXN":21.0537123462,"SGD":1.3568095036,"AUD":1.4064488757,"ILS":3.3802291048,"KRW":1138.1671616462,"PLN":3.8797624098,"date":"2020-10-19T00:00:00Z"},{"CAD":1.3171828596,"HKD":7.7500212134,"ISK":138.6508273229,"PHP":48.5625795503,"DKK":6.3139584217,"HUF":309.7581671616,"CZK":23.2040729741,"GBP":0.7686720407,"RON":4.1381417056,"SEK":8.7889690284,"IDR":14720.101824353,"INR":73.3088672041,"BRL":5.6121340687,"RUB":77.5902418328,"HRK":6.4340263046,"JPY":105.311837081,"THB":31.1803139584,"CHF":0.9099703012,"EUR":0.8485362749,"MYR":4.1424692406,"BGN":1.6595672465,"TRY":7.8962240136,"CNY":6.6836656767,"NOK":9.2889266016,"NZD":1.5062367416,"ZAR":16.4451421298,"USD":1.0,"MXN":21.0537123462,"SGD":1.3568095036,"AUD":1.4064488757,"ILS":3.3802291048,"KRW":1138.1671616462,"PLN":3.8797624098,"date":"2020-10-19T00:00:00Z"}]
@@ -73,11 +81,14 @@ def test_persist_messages(input_messages_1, expected_df_1):
 
     assert_frame_equal(df, expected_df_1)
 
+
 def test_persist_messages_invalid_sort(input_messages_1_reorder):
     input_messages = io.TextIOWrapper(
         io.BytesIO(input_messages_1_reorder.encode()), encoding="utf-8"
     )
 
-    with pytest.raises(ValueError,
-                       match="A record for stream test was encountered before a corresponding schema"):
+    with pytest.raises(
+        ValueError,
+        match="A record for stream test was encountered before a corresponding schema",
+    ):
         persist_messages(input_messages, "test_")

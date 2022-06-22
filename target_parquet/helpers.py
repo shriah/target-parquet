@@ -9,6 +9,7 @@ import os
 LOGGER = singer.get_logger()
 LOGGER.setLevel(os.getenv("LOGGER_LEVEL", "INFO"))
 
+
 def flatten(dictionary, parent_key="", sep="__"):
     """Function that flattens a nested structure, using the separater given as parameter, or uses '__' as default
     E.g:
@@ -38,6 +39,7 @@ def flatten(dictionary, parent_key="", sep="__"):
         else:
             items.append((new_key, str(v) if type(v) is list else v))
     return dict(items)
+
 
 def flatten_schema(dictionary, parent_key="", sep="__"):
     """Function that flattens a nested structure, using the separater given as parameter, or uses '__' as default
@@ -79,12 +81,9 @@ def flatten_schema(dictionary, parent_key="", sep="__"):
     for k, v in dictionary.items():
         new_key = parent_key + sep + k if parent_key else k
         if "type" not in v:
-            LOGGER.warning(
-                f'SCHEMA with limitted support on field {k}: {v}')
+            LOGGER.warning(f"SCHEMA with limitted support on field {k}: {v}")
         if "object" in v.get("type", []):
-            items.extend(flatten_schema(v.get("properties"),
-                                 new_key,
-                                 sep=sep))
+            items.extend(flatten_schema(v.get("properties"), new_key, sep=sep))
         else:
             items.append(new_key)
     return items

@@ -8,7 +8,6 @@ from jsonschema.validators import Draft4Validator
 import os
 import pkg_resources
 import pyarrow as pa
-from pyarrow import compute
 from pyarrow.parquet import ParquetWriter
 import singer
 import sys
@@ -27,6 +26,7 @@ _all__ = ["main"]
 LOGGER = singer.get_logger()
 LOGGER.setLevel(os.getenv("LOGGER_LEVEL", "INFO"))
 
+
 def create_dataframe(list_dict):
     fields = set()
     for d in list_dict:
@@ -37,9 +37,10 @@ def create_dataframe(list_dict):
 
 class MessageType(Enum):
     RECORD = 1
-    STATE  = 2
+    STATE = 2
     SCHEMA = 3
-    EOF    = 4
+    EOF = 4
+
 
 def emit_state(state):
     if state is not None:
@@ -166,10 +167,10 @@ def persist_messages(
             + ".parquet"
         )
         filepath = os.path.expanduser(os.path.join(destination_path, filename))
-        with open(filepath, 'wb') as f:
-            ParquetWriter(f,
-                        dataframe.schema,
-                        compression=compression_method).write_table(dataframe)
+        with open(filepath, "wb") as f:
+            ParquetWriter(
+                f, dataframe.schema, compression=compression_method
+            ).write_table(dataframe)
         ## explicit memory management. This can be usefull when working on very large data groups
         del dataframe
         return filepath
@@ -184,11 +185,12 @@ def persist_messages(
         while True:
             (message_type, stream_name, record) = receiver.get()  # q.get()
             if message_type == MessageType.RECORD:
-                if (stream_name != current_stream_name) and (current_stream_name != None):
+                if (stream_name != current_stream_name) and (
+                    current_stream_name != None
+                ):
                     files_created.append(
                         write_file(
-                            current_stream_name,
-                            records.pop(current_stream_name)
+                            current_stream_name, records.pop(current_stream_name)
                         )
                     )
                     ## explicit memory management. This can be usefull when working on very large data groups
@@ -198,12 +200,10 @@ def persist_messages(
                     records[stream_name] = [record]
                 else:
                     records[stream_name].append(record)
-                    if (file_size > 0) and \
-                    (not len(records[stream_name]) % file_size):
+                    if (file_size > 0) and (not len(records[stream_name]) % file_size):
                         files_created.append(
                             write_file(
-                                current_stream_name,
-                                records.pop(current_stream_name)
+                                current_stream_name, records.pop(current_stream_name)
                             )
                         )
                         gc.collect()
@@ -211,10 +211,7 @@ def persist_messages(
                 schemas[stream_name] = record
             elif message_type == MessageType.EOF:
                 files_created.append(
-                    write_file(
-                        current_stream_name,
-                        records.pop(current_stream_name)
-                    )
+                    write_file(current_stream_name, records.pop(current_stream_name))
                 )
                 LOGGER.info(f"Wrote {len(files_created)} files")
                 LOGGER.debug(f"Wrote {files_created} files")
@@ -279,7 +276,7 @@ def main():
         config.get("destination_path", "."),
         config.get("compression_method", None),
         config.get("streams_in_separate_folder", False),
-        int(config.get("file_size", -1))
+        int(config.get("file_size", -1)),
     )
 
     emit_state(state)
