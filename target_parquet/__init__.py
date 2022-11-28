@@ -27,12 +27,12 @@ LOGGER = singer.get_logger()
 LOGGER.setLevel(os.getenv("LOGGER_LEVEL", "INFO"))
 
 
-def create_dataframe(list_dict):
+def create_dataframe(list_dict, remove_empty_columns=False):
     fields = set()
     for d in list_dict:
         fields = fields.union(d.keys())
     dataframe = pa.table({f: [row.get(f) for row in list_dict] for f in fields
-                          if any([row.get(f) for row in list_dict])})
+                          if any([row.get(f) for row in list_dict]) or not remove_empty_columns})
     return dataframe
 
 
@@ -74,6 +74,7 @@ def persist_messages(
     compression_method=None,
     streams_in_separate_folder=False,
     file_size=-1,
+    remove_empty_columns=False,
 ):
     ## Static information shared among processes
     schemas = {}
@@ -155,7 +156,7 @@ def persist_messages(
     def write_file(current_stream_name, record):
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S-%f")
         LOGGER.debug(f"Writing files from {current_stream_name} stream")
-        dataframe = create_dataframe(record)
+        dataframe = create_dataframe(record, remove_empty_columns)
         if streams_in_separate_folder and not os.path.exists(
             os.path.join(destination_path, current_stream_name)
         ):
@@ -278,6 +279,7 @@ def main():
         config.get("compression_method", None),
         config.get("streams_in_separate_folder", False),
         int(config.get("file_size", -1)),
+        config.get("remove_empty_columns", False),
     )
 
     emit_state(state)

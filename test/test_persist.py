@@ -123,7 +123,7 @@ def test_persist_null_column(input_messages_2_null_col, expected_df_2):
         io.BytesIO(input_messages_2_null_col.encode()), encoding="utf-8"
     )
 
-    persist_messages(input_messages, f"test_null_col_{timestamp}")
+    persist_messages(input_messages, f"test_null_col_{timestamp}", remove_empty_columns=True)
 
     filename = [f for f in glob.glob(f"test_null_col_{timestamp}/*.parquet")]
 
