@@ -29,7 +29,7 @@ def expected_df_1():
 
 @pytest.fixture
 def expected_df_2():
-    # date will all values null
+    # date field have all values null
     return pa.table(
         {
             "str": ["value1", "value2", "value3"],
