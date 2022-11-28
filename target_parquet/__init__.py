@@ -4,7 +4,7 @@ from datetime import datetime
 from io import TextIOWrapper
 import http.client
 import simplejson as json
-from jsonschema.validators import Draft4Validator
+from jsonschema import Draft4Validator
 import os
 import pkg_resources
 import pyarrow as pa
@@ -31,7 +31,8 @@ def create_dataframe(list_dict):
     fields = set()
     for d in list_dict:
         fields = fields.union(d.keys())
-    dataframe = pa.table({f: [row.get(f) for row in list_dict] for f in fields})
+    dataframe = pa.table({f: [row.get(f) for row in list_dict] for f in fields
+                          if any([row.get(f) for row in list_dict])})
     return dataframe
 
 
@@ -112,7 +113,7 @@ def persist_messages(
                 LOGGER.debug(f"target-parquet got message: {message}")
                 try:
                     message = singer.parse_message(message).asdict()
-                except json.decoder.JSONDecodeError:
+                except json.JSONDecodeError:
                     raise Exception("Unable to parse:\n{}".format(message))
 
                 message_type = message["type"]
