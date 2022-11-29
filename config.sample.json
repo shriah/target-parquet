@@ -3,5 +3,6 @@
   "logging_level": "INFO",
   "destination_path": "/path/to/the/output/directory/",
   "compression_method": "snappy",
-  "streams_in_separate_folder": false
+  "streams_in_separate_folder": false,
+  "remove_empty_columns": false
 }
