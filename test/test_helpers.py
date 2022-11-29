@@ -1,7 +1,9 @@
-import pytest
+import pyarrow as pa
 import logging
 
-from target_parquet.helpers import flatten, flatten_schema
+import pytest
+
+from target_parquet.helpers import flatten, flatten_schema, flatten_schema_to_pyarrow_schema
 
 
 def test_flatten():
@@ -46,7 +48,12 @@ def test_flatten_schema():
             },
         },
     }
-    expected = ["key_1", "key_2__key_3", "key_2__key_4__key_5", "key_2__key_4__key_6"]
+    expected = {
+        "key_1": ["null", "integer"],
+        "key_2__key_3": ["null", "string"],
+        "key_2__key_4__key_5": ["null", "integer"],
+        "key_2__key_4__key_6": ["null", "array"]
+    }
 
     output = flatten_schema(in_dict)
     assert output == expected
@@ -65,25 +72,72 @@ def test_flatten_schema_2(caplog):
         "page_views_count": {"type": "integer"},
     }
 
-    expected = [
-        "id",
-        "created_at",
-        "updated_at",
-        "email",
-        "last_surveyed",
-        "external_created_at",
-        "page_views_count",
-    ]
+    expected = {
+        "id": "integer",
+        "created_at": "string",
+        "updated_at": "string",
+        "email": "string",
+        "last_surveyed": None,
+        "external_created_at": ["integer", "null"],
+        "page_views_count": "integer",
+    }
 
     with caplog.at_level(logging.WARNING):
         output = flatten_schema(in_dict)
         for record in caplog.records:
             assert (
-                "SCHEMA with limitted support on field last_surveyed" in record.message
+                "SCHEMA with limited support on field last_surveyed" in record.message
             )
     assert output == expected
 
 
 def test_flatten_schema_empty():
     in_dict = dict()
-    assert list() == flatten_schema(in_dict)
+    assert dict() == flatten_schema(in_dict)
+
+
+def test_flatten_schema_to_pyarrow_schema():
+    in_dict = {
+        "id": "integer",
+        "created_at": "string",
+        "updated_at": "string",
+        "email": "string",
+        "email_list": ["array", "null"],
+        "external_created_at": ["integer", "null"],
+        "page_views_count": "integer",
+        "only_null_datatype": ["null"],
+        "page_views_avg": ["number", "null"],
+    }
+
+    expected = pa.schema([
+        pa.field("id", pa.int64(), False),
+        pa.field("created_at", pa.string(), False),
+        pa.field("updated_at", pa.string(), False),
+        pa.field("email", pa.string(), False),
+        pa.field("email_list", pa.string(), True),
+        pa.field("external_created_at", pa.int64(), True),
+        pa.field("page_views_count", pa.int64(), False),
+        pa.field("page_views_avg", pa.float64(), True),
+        pa.field("only_null_datatype", pa.string(), True),
+    ])
+
+    assert expected.equals(flatten_schema_to_pyarrow_schema(in_dict, [
+        "id",
+        "created_at",
+        "updated_at",
+        "email",
+        "email_list",
+        "external_created_at",
+        "page_views_count",
+        "page_views_avg",
+        "only_null_datatype"
+    ]))
+
+
+def test_flatten_schema_to_pyarrow_schema_type_not_defined():
+    in_dict = {
+        "created_at": "new-type",
+    }
+
+    with pytest.raises(NotImplementedError):
+        flatten_schema_to_pyarrow_schema(in_dict, ["created_at"])
