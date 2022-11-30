@@ -34,7 +34,6 @@ def create_dataframe(list_dict, schema, force_output_schema_cast=False):
     data = {f: [row.get(f) for row in list_dict] for f in fields}
     dataframe = pa.table(data)
     if force_output_schema_cast and schema:
-        LOGGER.info(f"casting to the following schema: {schema} for fields: {list(fields)} and list {list_dict}")
         dataframe = dataframe.cast(flatten_schema_to_pyarrow_schema(schema, list(fields)))
     return dataframe
 
