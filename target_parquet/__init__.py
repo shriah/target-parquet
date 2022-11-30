@@ -34,6 +34,7 @@ def create_dataframe(list_dict, schema, force_output_schema_cast=False):
     data = {f: [row.get(f) for row in list_dict] for f in fields}
     dataframe = pa.table(data)
     if force_output_schema_cast and schema:
+        LOGGER.info(f"casting to the following schema: {schema}")
         dataframe = dataframe.cast(flatten_schema_to_pyarrow_schema(schema, list(fields)))
     return dataframe
 
@@ -98,6 +99,8 @@ def persist_messages(
             compression_extension = ""
             compression_method = None
     filename_separator = "-"
+    if force_output_schema_cast:
+        LOGGER.info("forcing the output cast to the provided schema")
     if streams_in_separate_folder:
         LOGGER.info("writing streams in separate folders")
         filename_separator = os.path.sep
