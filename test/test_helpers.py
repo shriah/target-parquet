@@ -18,7 +18,35 @@ def test_flatten():
         "key_2__key_4__key_6": "['10', '11']",
     }
 
-    output = flatten(in_dict)
+    flat_schema = {
+        "key_1": "integer",
+        "key_2__key_3": ["null", "integer"],
+        "key_2__key_4__key_5": ["null", "integer"],
+        "key_2__key_4__key_6": "string"
+    }
+    output = flatten(in_dict, flat_schema)
+    assert output == expected
+
+
+def test_flatten_with_empty_object():
+    in_dict = {
+        "key_1": 1,
+        "key_2": None,
+    }
+    expected = {
+        "key_1": 1,
+        "key_2__key_3": None,
+        "key_2__key_4__key_5": None,
+        "key_2__key_4__key_6": None,
+    }
+
+    flat_schema = {
+        "key_1": "integer",
+        "key_2__key_3": ["null", "integer"],
+        "key_2__key_4__key_5": ["null", "integer"],
+        "key_2__key_4__key_6": "string"
+    }
+    output = flatten(in_dict, flat_schema)
     assert output == expected
 
 

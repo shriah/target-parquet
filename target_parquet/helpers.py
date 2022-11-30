@@ -22,7 +22,7 @@ FIELD_TYPE_TO_PYARROW = {
 }
 
 
-def flatten(dictionary, parent_key="", sep="__"):
+def flatten(dictionary, flat_schema, parent_key="", sep="__"):
     """Function that flattens a nested structure, using the separater given as parameter, or uses '__' as default
     E.g:
      dictionary =  {
@@ -34,23 +34,40 @@ def flatten(dictionary, parent_key="", sep="__"):
                                       'key_6' : ['10', '11']
                                  }
                         }
-                       }
+                        'key_7': None
+                    }
+    flatten_schema = {
+             'key_1': ['null', 'integer'],
+             'key_2__key_3': ['null', 'string'],
+             'key_2__key_4__key_5': ['null', 'integer'],
+             'key_2__key_4__key_6': ['null', 'array']
+             'key_7__key_8': ['null', 'integer']
+             'key_7__key_9': ['null', 'string']
+        }
     By calling the function with the dictionary above as parameter, you will get the following structure:
         {
              'key_1': 1,
              'key_2__key_3': 2,
              'key_2__key_4__key_5': 3,
              'key_2__key_4__key_6': "['10', '11']"
+             'key_7__key_8': None
+             'key_7__key_9': None
          }
     """
     items = []
     if dictionary:
-        for k, v in dictionary.items():
-            new_key = parent_key + sep + k if parent_key else k
-            if isinstance(v, MutableMapping):
-                items.extend(flatten(v, new_key, sep=sep).items())
+        for key, value in dictionary.items():
+            new_key = parent_key + sep + key if parent_key else key
+            if isinstance(value, MutableMapping):
+                items.extend(flatten(value, flat_schema, new_key, sep=sep).items())
             else:
-                items.append((new_key, str(v) if type(v) is list else v))
+                if new_key in flat_schema:
+                    items.append((new_key, str(value) if type(value) is list else value))
+                else:
+                    for expected_schema_key in flat_schema.keys():
+                        if len(expected_schema_key.split(f"{key}__")) > 1:
+                            items.append((expected_schema_key, None))
+
     return dict(items)
 
 
