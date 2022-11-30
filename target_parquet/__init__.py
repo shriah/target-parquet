@@ -27,17 +27,15 @@ LOGGER = singer.get_logger()
 LOGGER.setLevel(os.getenv("LOGGER_LEVEL", "INFO"))
 
 
-def create_dataframe(list_dict, schema, remove_empty_columns=False, force_output_schema_cast=False):
+def create_dataframe(list_dict, schema, force_output_schema_cast=False):
     fields = set()
     for d in list_dict:
         fields = fields.union(d.keys())
-    data = {f: [row.get(f) for row in list_dict] for f in fields
-            if any([row.get(f) for row in list_dict]) or not remove_empty_columns}
+    data = {f: [row.get(f) for row in list_dict] for f in fields}
     dataframe = pa.table(data)
-    if force_output_schema_cast:
+    if force_output_schema_cast and schema:
         dataframe = dataframe.cast(flatten_schema_to_pyarrow_schema(schema, list(fields)))
     return dataframe
-
 
 class MessageType(Enum):
     RECORD = 1
@@ -77,7 +75,6 @@ def persist_messages(
     compression_method=None,
     streams_in_separate_folder=False,
     file_size=-1,
-    remove_empty_columns=False,
     force_output_schema_cast=False,
 ):
     ## Static information shared among processes
@@ -160,7 +157,7 @@ def persist_messages(
     def write_file(current_stream_name, record, schema):
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S-%f")
         LOGGER.debug(f"Writing files from {current_stream_name} stream")
-        dataframe = create_dataframe(record, schema, remove_empty_columns, force_output_schema_cast)
+        dataframe = create_dataframe(record, schema, force_output_schema_cast)
         if streams_in_separate_folder and not os.path.exists(
             os.path.join(destination_path, current_stream_name)
         ):
@@ -286,7 +283,6 @@ def main():
         config.get("compression_method", None),
         config.get("streams_in_separate_folder", False),
         int(config.get("file_size", -1)),
-        config.get("remove_empty_columns", False),
         config.get("force_output_schema_cast", False),
     )
 

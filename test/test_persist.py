@@ -70,18 +70,6 @@ def input_messages_1_reorder():
 """
 
 @pytest.fixture
-def input_messages_2_null_col():
-    return """\
-{"type": "SCHEMA","stream": "test","schema": {"type": "object","properties": {"str": {"type": ["null", "string"]},"int": {"type": ["null", "integer"]},"decimal": {"type": ["null", "number"]},"date": {"type": ["null", "string"], "format": "date-time"},"datetime": {"type": ["null", "string"], "format": "date-time"},"boolean": {"type": ["null", "boolean"]}}}, "key_properties": ["str"]}
-{"type": "RECORD", "stream": "test", "record": {"str": "value1","int": 1,"decimal": 0.1,"date": null,"datetime": "2021-06-11T00:00:00.000000Z","boolean": true}}
-{"type": "STATE", "value": {"datetime": "2020-10-19"}}
-{"type": "SCHEMA","stream": "test","schema": {"type": "object","properties": {"str": {"type": ["null", "string"]},"int": {"type": ["null", "integer"]},"decimal": {"type": ["null", "number"]},"date": {"type": ["null", "string"], "format": "date-time"},"datetime": {"type": ["null", "string"], "format": "date-time"},"boolean": {"type": ["null", "boolean"]}}}, "key_properties": ["str"]}
-{"type": "RECORD", "stream": "test", "record": {"str": "value2","decimal": 0.2,"date": null,"datetime": "2021-06-12T00:00:00.000000Z","boolean": true}}
-{"type": "RECORD", "stream": "test", "record": {"str": "value3","int": 3,"decimal": 0.3,"date": null,"datetime": "2021-06-13T00:00:00.000000Z","boolean": false}}
-{"type": "STATE", "value": {"datetime": "2020-10-19"}}
-"""
-
-@pytest.fixture
 def input_messages_2_null_col_with_different_datatype():
     return """\
 {"type": "SCHEMA","stream": "test","schema": {"type": "object","properties": {"str": {"type": ["null", "string"]},"int": {"type": ["null", "integer"]},"decimal": {"type": ["null", "number"]},"decimal2": {"type": ["null", "number"]},"date": {"type": ["null", "string"], "format": "date-time"},"datetime": {"type": ["null", "string"], "format": "date-time"},"boolean": {"type": ["null", "boolean"]}}}, "key_properties": ["str"]}
@@ -121,18 +109,7 @@ def test_persist_messages_invalid_sort(input_messages_1_reorder):
             match="A record for stream test was encountered before a corresponding schema",
         ):
           persist_messages(input_messages, f"{tmpdirname}test_")
-
-
-def test_persist_null_column(input_messages_2_null_col, expected_df_2):
-    input_messages = io.TextIOWrapper(
-        io.BytesIO(input_messages_2_null_col.encode()), encoding="utf-8"
-    )
-
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        persist_messages(input_messages, f"{tmpdirname}/test_null_col", remove_empty_columns=True)
-        filename = [f for f in glob.glob(f"{tmpdirname}/test_null_col/*.parquet")]
-        df = ParquetFile(filename[0]).read().to_pandas()
-        assert_frame_equal(df, expected_df_2, check_like=True)
+        persist_messages(input_messages, "test_")
 
 
 def test_persist_with_schema_force(input_messages_2_null_col_with_different_datatype):
