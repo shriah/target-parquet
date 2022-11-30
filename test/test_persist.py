@@ -108,8 +108,7 @@ def test_persist_messages_invalid_sort(input_messages_1_reorder):
             ValueError,
             match="A record for stream test was encountered before a corresponding schema",
         ):
-          persist_messages(input_messages, f"{tmpdirname}test_")
-        persist_messages(input_messages, "test_")
+            persist_messages(input_messages, f"{tmpdirname}test_")
 
 
 def test_persist_with_schema_force(input_messages_2_null_col_with_different_datatype):
