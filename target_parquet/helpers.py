@@ -12,15 +12,6 @@ import pyarrow as pa
 LOGGER = singer.get_logger()
 LOGGER.setLevel(os.getenv("LOGGER_LEVEL", "INFO"))
 
-FIELD_TYPE_TO_PYARROW = {
-    "BOOLEAN": pa.bool_(),
-    "STRING": pa.string(),
-    "ARRAY": pa.string(),
-    "": pa.string(),  # string type will be considered as default
-    "INTEGER": pa.int64(),
-    "NUMBER": pa.float64()
-}
-
 
 def flatten(dictionary, flat_schema, parent_key="", sep="__"):
     """Function that flattens a nested structure, using the separater given as parameter, or uses '__' as default
@@ -64,9 +55,9 @@ def flatten(dictionary, flat_schema, parent_key="", sep="__"):
                 if new_key in flat_schema:
                     items.append((new_key, str(value) if type(value) is list else value))
                 else:
-                    for expected_schema_key in flat_schema.keys():
-                        if len(expected_schema_key.split(f"{key}__")) > 1:
-                            items.append((expected_schema_key, None))
+                    for schema_key in flat_schema.keys():
+                        if len(schema_key.split(f"{key}__")) > 1:
+                            items.append((schema_key, None))
 
     return dict(items)
 
@@ -118,6 +109,16 @@ def flatten_schema(dictionary, parent_key="", sep="__"):
             else:
                 items[new_key] = value.get("type", None)
     return items
+
+
+FIELD_TYPE_TO_PYARROW = {
+    "BOOLEAN": pa.bool_(),
+    "STRING": pa.string(),
+    "ARRAY": pa.string(),
+    "": pa.string(),  # string type will be considered as default
+    "INTEGER": pa.int64(),
+    "NUMBER": pa.float64()
+}
 
 
 def _field_type_to_pyarrow_field(field_name: str, input_types: Union[List[str], str]):

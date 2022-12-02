@@ -7,7 +7,7 @@ import pyarrow as pa
 from pyarrow.parquet import ParquetFile
 from pandas.testing import assert_frame_equal
 import glob
-from target_parquet import persist_messages
+from target_parquet import persist_messages, create_dataframe
 
 
 @pytest.fixture
@@ -132,3 +132,70 @@ def test_persist_with_schema_force(input_messages_2_null_col_with_different_data
         ])
         for field in expected_schema:
             assert schema.field(field.name).type == field.type
+
+
+def test_create_dataframe():
+    input_data = [{
+        "key_1": 1,
+        "key_2__key_3": 2,
+        "key_2__key_4__key_5": 3,
+        "key_2__key_4__key_6": "['10', '11']",
+    }]
+
+    schema = {
+        "key_1": "integer",
+        "key_2__key_3": ["null", "string"],
+        "key_2__key_4__key_5": ["null", "integer"],
+        "key_2__key_4__key_6": "string"
+    }
+
+    expected_schema = pa.schema([
+        pa.field("key_1", pa.int64(), False),
+        pa.field("key_2__key_4__key_6", pa.string(), False),
+        pa.field("key_2__key_3", pa.string(), True),
+        pa.field("key_2__key_4__key_5", pa.int64(), True)
+    ])
+
+    df = create_dataframe(input_data, schema, force_output_schema_cast=True)
+    assert sorted(df.column_names) == sorted(expected_schema.names)
+    for field in expected_schema:
+        assert df.schema.field(field.name).type == field.type
+    assert df.num_rows == 1
+
+
+def test_create_dataframe_no_schema_cast():
+    input_data = [{
+        "key_1": 1,
+        "key_2__key_3": 2,
+        "key_2__key_4__key_5": 3,
+        "key_2__key_4__key_6": "['10', '11']",
+    }]
+
+    schema = {}
+
+    expected_schema = pa.schema([
+        pa.field("key_1", pa.int64(), False),
+        pa.field("key_2__key_4__key_6", pa.string(), False),
+        pa.field("key_2__key_3", pa.int64(), True),
+        pa.field("key_2__key_4__key_5", pa.int64(), True)
+    ])
+
+    df = create_dataframe(input_data, schema, force_output_schema_cast=False)
+    assert sorted(df.column_names) == sorted(expected_schema.names)
+    for field in expected_schema:
+        assert df.schema.field(field.name).type == field.type
+    assert df.num_rows == 1
+
+
+def test_create_dataframe_exception_no_schema():
+    input_data = [{
+        "key_1": 1,
+        "key_2__key_3": 2,
+        "key_2__key_4__key_5": 3,
+        "key_2__key_4__key_6": "['10', '11']",
+    }]
+
+    schema = {}
+
+    with pytest.raises(Exception, match='Not possible to force the cast because the schema was not provided.'):
+        create_dataframe(input_data, schema, force_output_schema_cast=True)

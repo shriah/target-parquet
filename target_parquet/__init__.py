@@ -33,8 +33,11 @@ def create_dataframe(list_dict, schema, force_output_schema_cast=False):
         fields = fields.union(d.keys())
     data = {f: [row.get(f) for row in list_dict] for f in fields}
     dataframe = pa.table(data)
-    if force_output_schema_cast and schema:
-        dataframe = dataframe.cast(flatten_schema_to_pyarrow_schema(schema, list(fields)))
+    if force_output_schema_cast:
+        if schema:
+            dataframe = dataframe.cast(flatten_schema_to_pyarrow_schema(schema, list(fields)))
+        else:
+            raise Exception("Not possible to force the cast because the schema was not provided.")
     return dataframe
 
 class MessageType(Enum):
