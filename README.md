@@ -47,7 +47,7 @@ If you want to save the file in a specific location and not the working director
 Also, you can compress the parquet file by passing the `compression_method` argument in the configuration file. Note that, these compression methods have to be supported by `Pyarrow`, and at the moment (October, 2020), the only compression modes available are: snappy (recommended), zstd, brotli and gzip. The library will check these, and default to `None` if something else is provided.
 For an example of the configuration file, see [config.sample.json](config.sample.json).
 There is also an `streams_in_separate_folder` option to create each stream in a different folder, as these are expected to come in different schema.
-The last config is the `remove_empty_columns` that removes columns without any value from the final parquet file to avoid the `pyarrow` to save a different datatype (this kind of issue breaks spark jobs).
+The last config is the `force_output_schema_cast` that forces the cast to the provided schema before saving the parquet file (default is false which lets pyarrow automatically detect the data type for each column).
 To run `target-parquet` with the configuration file, use this command:
 
 ```bash

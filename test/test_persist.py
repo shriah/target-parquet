@@ -1,3 +1,4 @@
+import tempfile
 import pytest
 import io
 from datetime import datetime
@@ -6,8 +7,7 @@ import pyarrow as pa
 from pyarrow.parquet import ParquetFile
 from pandas.testing import assert_frame_equal
 import glob
-import os
-from target_parquet import persist_messages
+from target_parquet import persist_messages, create_dataframe
 
 
 @pytest.fixture
@@ -70,14 +70,14 @@ def input_messages_1_reorder():
 """
 
 @pytest.fixture
-def input_messages_2_null_col():
+def input_messages_2_null_col_with_different_datatype():
     return """\
-{"type": "SCHEMA","stream": "test","schema": {"type": "object","properties": {"str": {"type": ["null", "string"]},"int": {"type": ["null", "integer"]},"decimal": {"type": ["null", "number"]},"date": {"type": ["null", "string"], "format": "date-time"},"datetime": {"type": ["null", "string"], "format": "date-time"},"boolean": {"type": ["null", "boolean"]}}}, "key_properties": ["str"]}
-{"type": "RECORD", "stream": "test", "record": {"str": "value1","int": 1,"decimal": 0.1,"date": null,"datetime": "2021-06-11T00:00:00.000000Z","boolean": true}}
+{"type": "SCHEMA","stream": "test","schema": {"type": "object","properties": {"str": {"type": ["null", "string"]},"int": {"type": ["null", "integer"]},"decimal": {"type": ["null", "number"]},"decimal2": {"type": ["null", "number"]},"date": {"type": ["null", "string"], "format": "date-time"},"datetime": {"type": ["null", "string"], "format": "date-time"},"boolean": {"type": ["null", "boolean"]}}}, "key_properties": ["str"]}
+{"type": "RECORD", "stream": "test", "record": {"str": "value1","int": 1,"decimal": 0.1,"decimal2": null,"date": null,"datetime": "2021-06-11T00:00:00.000000Z","boolean": true}}
 {"type": "STATE", "value": {"datetime": "2020-10-19"}}
-{"type": "SCHEMA","stream": "test","schema": {"type": "object","properties": {"str": {"type": ["null", "string"]},"int": {"type": ["null", "integer"]},"decimal": {"type": ["null", "number"]},"date": {"type": ["null", "string"], "format": "date-time"},"datetime": {"type": ["null", "string"], "format": "date-time"},"boolean": {"type": ["null", "boolean"]}}}, "key_properties": ["str"]}
-{"type": "RECORD", "stream": "test", "record": {"str": "value2","decimal": 0.2,"date": null,"datetime": "2021-06-12T00:00:00.000000Z","boolean": true}}
-{"type": "RECORD", "stream": "test", "record": {"str": "value3","int": 3,"decimal": 0.3,"date": null,"datetime": "2021-06-13T00:00:00.000000Z","boolean": false}}
+{"type": "SCHEMA","stream": "test","schema": {"type": "object","properties": {"str": {"type": ["null", "string"]},"int": {"type": ["null", "integer"]},"decimal": {"type": ["null", "number"]},"decimal2": {"type": ["null", "number"]},"date": {"type": ["null", "string"], "format": "date-time"},"datetime": {"type": ["null", "string"], "format": "date-time"},"boolean": {"type": ["null", "boolean"]}}}, "key_properties": ["str"]}
+{"type": "RECORD", "stream": "test", "record": {"str": "value2","decimal": 0.2,"decimal2": null,"date": null,"datetime": "2021-06-12T00:00:00.000000Z","boolean": true}}
+{"type": "RECORD", "stream": "test", "record": {"str": "value3","int": 3,"decimal": 0.3,"decimal2": null,"date": null,"datetime": "2021-06-13T00:00:00.000000Z","boolean": false}}
 {"type": "STATE", "value": {"datetime": "2020-10-19"}}
 """
 
@@ -91,17 +91,11 @@ def test_persist_messages(input_messages_1, expected_df_1):
         io.BytesIO(input_messages_1.encode()), encoding="utf-8"
     )
 
-    persist_messages(input_messages, f"test_{timestamp}")
-
-    filename = [f for f in glob.glob(f"test_{timestamp}/*.parquet")]
-
-    df = ParquetFile(filename[0]).read().to_pandas()
-
-    for f in filename:
-        os.remove(f)
-    os.rmdir(f"test_{timestamp}")
-
-    assert_frame_equal(df, expected_df_1, check_like=True)
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        persist_messages(input_messages, f"{tmpdirname}/test_{timestamp}")
+        filename = [f for f in glob.glob(f"{tmpdirname}/test_{timestamp}/*.parquet")]
+        df = ParquetFile(filename[0]).read().to_pandas()
+        assert_frame_equal(df, expected_df_1, check_like=True)
 
 
 def test_persist_messages_invalid_sort(input_messages_1_reorder):
@@ -109,28 +103,99 @@ def test_persist_messages_invalid_sort(input_messages_1_reorder):
         io.BytesIO(input_messages_1_reorder.encode()), encoding="utf-8"
     )
 
-    with pytest.raises(
-        ValueError,
-        match="A record for stream test was encountered before a corresponding schema",
-    ):
-        persist_messages(input_messages, "test_")
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        with pytest.raises(
+            ValueError,
+            match="A record for stream test was encountered before a corresponding schema",
+        ):
+            persist_messages(input_messages, f"{tmpdirname}test_")
 
 
-def test_persist_null_column(input_messages_2_null_col, expected_df_2):
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+def test_persist_with_schema_force(input_messages_2_null_col_with_different_datatype):
 
     input_messages = io.TextIOWrapper(
-        io.BytesIO(input_messages_2_null_col.encode()), encoding="utf-8"
+        io.BytesIO(input_messages_2_null_col_with_different_datatype.encode()), encoding="utf-8"
     )
 
-    persist_messages(input_messages, f"test_null_col_{timestamp}", remove_empty_columns=True)
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        persist_messages(input_messages, f"{tmpdirname}/test_force_schema", force_output_schema_cast=True)
+        filename = [f for f in glob.glob(f"{tmpdirname}/test_force_schema/*.parquet")]
+        schema = pa.parquet.read_schema(filename[0])
+        expected_schema = pa.schema([
+            pa.field("decimal", pa.float64(), True),
+            pa.field("datetime", pa.string(), True),
+            pa.field("date", pa.string(), True),
+            pa.field("int", pa.int64(), True),
+            pa.field("boolean", pa.bool_(), True),
+            pa.field("decimal2", pa.float64(), True),
+            pa.field("str", pa.string(), True)
+        ])
+        for field in expected_schema:
+            assert schema.field(field.name).type == field.type
 
-    filename = [f for f in glob.glob(f"test_null_col_{timestamp}/*.parquet")]
 
-    df = ParquetFile(filename[0]).read().to_pandas()
+def test_create_dataframe():
+    input_data = [{
+        "key_1": 1,
+        "key_2__key_3": 2,
+        "key_2__key_4__key_5": 3,
+        "key_2__key_4__key_6": "['10', '11']",
+    }]
 
-    for f in filename:
-        os.remove(f)
-    os.rmdir(f"test_null_col_{timestamp}")
+    schema = {
+        "key_1": "integer",
+        "key_2__key_3": ["null", "string"],
+        "key_2__key_4__key_5": ["null", "integer"],
+        "key_2__key_4__key_6": "string"
+    }
 
-    assert_frame_equal(df, expected_df_2, check_like=True)
+    expected_schema = pa.schema([
+        pa.field("key_1", pa.int64(), False),
+        pa.field("key_2__key_4__key_6", pa.string(), False),
+        pa.field("key_2__key_3", pa.string(), True),
+        pa.field("key_2__key_4__key_5", pa.int64(), True)
+    ])
+
+    df = create_dataframe(input_data, schema, force_output_schema_cast=True)
+    assert sorted(df.column_names) == sorted(expected_schema.names)
+    for field in expected_schema:
+        assert df.schema.field(field.name).type == field.type
+    assert df.num_rows == 1
+
+
+def test_create_dataframe_no_schema_cast():
+    input_data = [{
+        "key_1": 1,
+        "key_2__key_3": 2,
+        "key_2__key_4__key_5": 3,
+        "key_2__key_4__key_6": "['10', '11']",
+    }]
+
+    schema = {}
+
+    expected_schema = pa.schema([
+        pa.field("key_1", pa.int64(), False),
+        pa.field("key_2__key_4__key_6", pa.string(), False),
+        pa.field("key_2__key_3", pa.int64(), True),
+        pa.field("key_2__key_4__key_5", pa.int64(), True)
+    ])
+
+    df = create_dataframe(input_data, schema, force_output_schema_cast=False)
+    assert sorted(df.column_names) == sorted(expected_schema.names)
+    for field in expected_schema:
+        assert df.schema.field(field.name).type == field.type
+    assert df.num_rows == 1
+
+
+def test_create_dataframe_exception_no_schema():
+    input_data = [{
+        "key_1": 1,
+        "key_2__key_3": 2,
+        "key_2__key_4__key_5": 3,
+        "key_2__key_4__key_6": "['10', '11']",
+    }]
+
+    schema = {}
+
+    with pytest.raises(Exception, match='Not possible to force the cast because the schema was not provided.'):
+        create_dataframe(input_data, schema, force_output_schema_cast=True)

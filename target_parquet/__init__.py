@@ -19,7 +19,7 @@ import gc
 from enum import Enum
 from multiprocessing import Process, Queue
 
-from .helpers import flatten, flatten_schema
+from .helpers import flatten, flatten_schema, flatten_schema_to_pyarrow_schema
 
 _all__ = ["main"]
 
@@ -27,14 +27,18 @@ LOGGER = singer.get_logger()
 LOGGER.setLevel(os.getenv("LOGGER_LEVEL", "INFO"))
 
 
-def create_dataframe(list_dict, remove_empty_columns=False):
+def create_dataframe(list_dict, schema, force_output_schema_cast=False):
     fields = set()
     for d in list_dict:
         fields = fields.union(d.keys())
-    dataframe = pa.table({f: [row.get(f) for row in list_dict] for f in fields
-                          if any([row.get(f) for row in list_dict]) or not remove_empty_columns})
+    data = {f: [row.get(f) for row in list_dict] for f in fields}
+    dataframe = pa.table(data)
+    if force_output_schema_cast:
+        if schema:
+            dataframe = dataframe.cast(flatten_schema_to_pyarrow_schema(schema, list(fields)))
+        else:
+            raise Exception("Not possible to force the cast because the schema was not provided.")
     return dataframe
-
 
 class MessageType(Enum):
     RECORD = 1
@@ -74,7 +78,7 @@ def persist_messages(
     compression_method=None,
     streams_in_separate_folder=False,
     file_size=-1,
-    remove_empty_columns=False,
+    force_output_schema_cast=False,
 ):
     ## Static information shared among processes
     schemas = {}
@@ -97,6 +101,8 @@ def persist_messages(
             compression_extension = ""
             compression_method = None
     filename_separator = "-"
+    if force_output_schema_cast:
+        LOGGER.info("forcing the output cast to the provided schema")
     if streams_in_separate_folder:
         LOGGER.info("writing streams in separate folders")
         filename_separator = os.path.sep
@@ -127,7 +133,7 @@ def persist_messages(
                         )
                     stream_name = message["stream"]
                     validators[message["stream"]].validate(message["record"])
-                    flattened_record = flatten(message["record"])
+                    flattened_record = flatten(message["record"], schemas.get(stream_name, {}))
                     # Once the record is flattenned, it is added to the final record list, which will be stored in the parquet file.
                     w_queue.put((MessageType.RECORD, stream_name, flattened_record))
                     state = None
@@ -153,10 +159,10 @@ def persist_messages(
             w_queue.put((MessageType.EOF, _break_object, None))
             raise Err
 
-    def write_file(current_stream_name, record):
+    def write_file(current_stream_name, record, schema):
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S-%f")
         LOGGER.debug(f"Writing files from {current_stream_name} stream")
-        dataframe = create_dataframe(record, remove_empty_columns)
+        dataframe = create_dataframe(record, schema, force_output_schema_cast)
         if streams_in_separate_folder and not os.path.exists(
             os.path.join(destination_path, current_stream_name)
         ):
@@ -192,7 +198,8 @@ def persist_messages(
                 ):
                     files_created.append(
                         write_file(
-                            current_stream_name, records.pop(current_stream_name)
+                            current_stream_name, records.pop(current_stream_name),
+                            schemas.get(current_stream_name, {})
                         )
                     )
                     ## explicit memory management. This can be usefull when working on very large data groups
@@ -205,7 +212,8 @@ def persist_messages(
                     if (file_size > 0) and (not len(records[stream_name]) % file_size):
                         files_created.append(
                             write_file(
-                                current_stream_name, records.pop(current_stream_name)
+                                current_stream_name, records.pop(current_stream_name),
+                                schemas.get(current_stream_name, {})
                             )
                         )
                         gc.collect()
@@ -213,7 +221,8 @@ def persist_messages(
                 schemas[stream_name] = record
             elif message_type == MessageType.EOF:
                 files_created.append(
-                    write_file(current_stream_name, records.pop(current_stream_name))
+                    write_file(current_stream_name, records.pop(current_stream_name),
+                               schemas.get(current_stream_name, {}))
                 )
                 LOGGER.info(f"Wrote {len(files_created)} files")
                 LOGGER.debug(f"Wrote {files_created} files")
@@ -279,7 +288,7 @@ def main():
         config.get("compression_method", None),
         config.get("streams_in_separate_folder", False),
         int(config.get("file_size", -1)),
-        config.get("remove_empty_columns", False),
+        config.get("force_output_schema_cast", False),
     )
 
     emit_state(state)
