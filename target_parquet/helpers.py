@@ -41,8 +41,6 @@ def flatten(dictionary, flat_schema, parent_key="", sep="__"):
              'key_2__key_3': 2,
              'key_2__key_4__key_5': 3,
              'key_2__key_4__key_6': "['10', '11']"
-             'key_7__key_8': None
-             'key_7__key_9': None
          }
     """
     items = []
@@ -54,11 +52,6 @@ def flatten(dictionary, flat_schema, parent_key="", sep="__"):
             else:
                 if new_key in flat_schema:
                     items.append((new_key, str(value) if type(value) is list else value))
-                else:
-                    for schema_key in flat_schema.keys():
-                        if len(schema_key.split(f"{key}__")) > 1:
-                            items.append((schema_key, None))
-
     return dict(items)
 
 

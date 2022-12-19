@@ -46,7 +46,7 @@ def test_flatten_with_empty_object():
         "key_2__key_4__key_5": ["null", "integer"],
         "key_2__key_4__key_6": "string"
     }
-    output = flatten(in_dict, flat_schema)
+    output = flat_schema.fromkeys(flat_schema.keys(), None) | flatten(in_dict, flat_schema)
     assert output == expected
 
 
