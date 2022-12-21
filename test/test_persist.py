@@ -1,4 +1,5 @@
 import tempfile
+import pandas as pd
 import pytest
 import io
 from datetime import datetime
@@ -44,6 +45,22 @@ def expected_df_2():
         }
     ).to_pandas()
 
+
+@pytest.fixture
+def expected_df_3():
+    return pd.DataFrame(
+        [
+            {'field1__field2__field3': 'test_field3',
+             'field1__field2__field4': 'test_field4',
+             'field2__field3': None,
+             'field2__field4': None,
+             'field2__field5': None,
+             'field6': None,
+             }
+        ]
+    )
+
+
 @pytest.fixture
 def input_messages_1():
     return """\
@@ -69,6 +86,7 @@ def input_messages_1_reorder():
 {"type": "STATE", "value": {"datetime": "2020-10-19"}}
 """
 
+
 @pytest.fixture
 def input_messages_2_null_col_with_different_datatype():
     return """\
@@ -78,6 +96,15 @@ def input_messages_2_null_col_with_different_datatype():
 {"type": "SCHEMA","stream": "test","schema": {"type": "object","properties": {"str": {"type": ["null", "string"]},"int": {"type": ["null", "integer"]},"decimal": {"type": ["null", "number"]},"decimal2": {"type": ["null", "number"]},"date": {"type": ["null", "string"], "format": "date-time"},"datetime": {"type": ["null", "string"], "format": "date-time"},"boolean": {"type": ["null", "boolean"]}}}, "key_properties": ["str"]}
 {"type": "RECORD", "stream": "test", "record": {"str": "value2","decimal": 0.2,"decimal2": null,"date": null,"datetime": "2021-06-12T00:00:00.000000Z","boolean": true}}
 {"type": "RECORD", "stream": "test", "record": {"str": "value3","int": 3,"decimal": 0.3,"decimal2": null,"date": null,"datetime": "2021-06-13T00:00:00.000000Z","boolean": false}}
+{"type": "STATE", "value": {"datetime": "2020-10-19"}}
+"""
+
+
+@pytest.fixture
+def input_messages_3_test_null_fields():
+    return """\
+{"type": "SCHEMA","stream": "test","schema": { "type": ["null", "object"], "properties": { "field1": { "type": ["null", "object"], "additionalProperties": false, "properties": { "field2": { "type": ["null", "object"], "properties": { "field3": { "type": ["null", "string"] }, "field4": { "type": ["null", "string"] } } } } }, "field2": { "type": ["null", "object"], "properties": { "field3": { "type": ["null", "string"] }, "field4": { "type": ["null", "string"] }, "field5": { "type": ["null", "string"] } } }, "field6": { "type": ["null", "string"] } }, "additionalProperties": false }, "key_properties": ["str"]}
+{"type": "RECORD", "stream": "test", "record": {"field1": {"field2": {"field3": "test_field3", "field4": "test_field4"}}, "field2": null}}
 {"type": "STATE", "value": {"datetime": "2020-10-19"}}
 """
 
@@ -98,6 +125,22 @@ def test_persist_messages(input_messages_1, expected_df_1):
         assert_frame_equal(df, expected_df_1, check_like=True)
 
 
+def test_persist_messages_null_field(input_messages_3_test_null_fields, expected_df_3):
+    """
+    This tests checks if the null object fields are being correctly exploded according to the schema and
+    if it doesn't replace the values if we have a conflict of the same field name in different levels of object.
+    """
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    input_messages = io.TextIOWrapper(
+        io.BytesIO(input_messages_3_test_null_fields.encode()), encoding="utf-8"
+    )
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        persist_messages(input_messages, f"{tmpdirname}/test_{timestamp}")
+        filename = [f for f in glob.glob(f"{tmpdirname}/test_{timestamp}/*.parquet")]
+        df = ParquetFile(filename[0]).read().to_pandas()
+        assert_frame_equal(df, expected_df_3, check_like=True)
+
+
 def test_persist_messages_invalid_sort(input_messages_1_reorder):
     input_messages = io.TextIOWrapper(
         io.BytesIO(input_messages_1_reorder.encode()), encoding="utf-8"
@@ -112,7 +155,6 @@ def test_persist_messages_invalid_sort(input_messages_1_reorder):
 
 
 def test_persist_with_schema_force(input_messages_2_null_col_with_different_datatype):
-
     input_messages = io.TextIOWrapper(
         io.BytesIO(input_messages_2_null_col_with_different_datatype.encode()), encoding="utf-8"
     )
