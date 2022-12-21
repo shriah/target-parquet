@@ -45,9 +45,7 @@ def flatten(dictionary, flat_schema, parent_key="", sep="__"):
              'key_7__key_9': None
          }
     """
-    items = {}
-    if not parent_key:
-        items = flat_schema.fromkeys(flat_schema.keys(), None)
+    items = {} if parent_key else flat_schema.fromkeys(flat_schema.keys(), None)
     if dictionary:
         for key, value in dictionary.items():
             new_key = parent_key + sep + key if parent_key else key
