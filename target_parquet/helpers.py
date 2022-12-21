@@ -41,18 +41,22 @@ def flatten(dictionary, flat_schema, parent_key="", sep="__"):
              'key_2__key_3': 2,
              'key_2__key_4__key_5': 3,
              'key_2__key_4__key_6': "['10', '11']"
+             'key_7__key_8': None
+             'key_7__key_9': None
          }
     """
-    items = []
+    items = {}
+    if not parent_key:
+        items = flat_schema.fromkeys(flat_schema.keys(), None)
     if dictionary:
         for key, value in dictionary.items():
             new_key = parent_key + sep + key if parent_key else key
             if isinstance(value, MutableMapping):
-                items.extend(flatten(value, flat_schema, new_key, sep=sep).items())
+                items.update(flatten(value, flat_schema, new_key, sep=sep))
             else:
                 if new_key in flat_schema:
-                    items.append((new_key, str(value) if type(value) is list else value))
-    return dict(items)
+                    items[new_key] = str(value) if isinstance(value, list) else value
+    return items
 
 
 def flatten_schema(dictionary, parent_key="", sep="__"):

@@ -133,9 +133,7 @@ def persist_messages(
                         )
                     stream_name = message["stream"]
                     validators[message["stream"]].validate(message["record"])
-                    schema = schemas.get(stream_name, {})
-                    # Merge a record with all the schema fields empty to force include all fields
-                    flattened_record = schema.fromkeys(schema.keys(), None) | flatten(message["record"], schema)
+                    flattened_record = flatten(message["record"], schemas.get(stream_name, {}))
                     # Once the record is flattenned, it is added to the final record list, which will be stored in the parquet file.
                     w_queue.put((MessageType.RECORD, stream_name, flattened_record))
                     state = None
