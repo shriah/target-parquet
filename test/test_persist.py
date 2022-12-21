@@ -50,78 +50,14 @@ def expected_df_2():
 def expected_df_3():
     return pd.DataFrame(
         [
-            {'commit__author__avatar_url': None,
-             'commit__committer__node_id': None,
-             'commit__committer__repos_url': None,
-             'commit__author__received_events_url': None,
-             'sha': '123',
-             'parents': "[{'sha': '22222', 'url': 'https://api.github.com/', 'html_url': 'https://github.com/'}]",
-             'commit__committer__html_url': None,
-             'commit__committer__starred_at': None,
-             'commit__committer__login': None,
-             'commit__author__organizations_url': None,
-             'commit__committer__id': None,
-             'commit__committer__organizations_url': None,
-             'commit__author__date': '2022-01-01T17:16:40.000000Z',
-             'commit__author__id': None,
-             'commit__committer__avatar_url': None,
-             'commit__committer__starred_url': None,
-             'commit__author__gists_url': None,
-             'commit__committer__email': 'noreply@github.com',
-             'commit__committer__url': None,
-             'commit__comment_count': 0,
-             'commit__author__html_url': None,
-             'comments_url': 'https://api.github.com/',
-             'author__id': None,
-             'commit__author__events_url': None,
-             'id': None,
-             'files': None,
-             'updated_at': '2022-01-01T17:16:40.000000Z',
-             'commit__committer__name': 'GitHub',
-             'node_id': '111',
-             'commit__tree__sha': '123',
-             'commit__committer__events_url': None,
-             'commit__author__starred_url': None,
-             'commit__author__repos_url': None,
-             'commit__committer__type': None,
-             'committer__name': None,
-             'author__name': None,
-             'pr_id': None,
-             'html_url': 'https://github.com/',
-             'commit__url': 'https://api.github.com/',
-             'commit__tree__url': 'https://api.github.com/',
-             'commit__author__subscriptions_url': None,
-             'stats__total': None,
-             'commit__committer__followers_url': None,
-             'committer__login': 'web-flow',
-             'commit__committer__subscriptions_url': None,
-             'commit__committer__received_events_url': None,
-             'commit__author__node_id': None,
-             'stats__additions': None,
-             'pr_number': None,
-             'committer__email': None,
-             'author__email': None,
-             'stats__deletions': None,
-             'commit__author__name': 'User 1',
-             'commit__author__site_admin': None,
-             '_sdc_repository': 'MyRepo',
-             'commit__author__url': None,
-             'commit__author__type': None,
-             'commit__committer__gravatar_id': None,
-             'url': 'https://api.github.com/',
-             'commit__committer__gists_url': None,
-             'commit__message': 'Message',
-             'commit__committer__following_url': None,
-             'commit__committer__site_admin': None,
-             'commit__author__starred_at': None,
-             'commit__committer__date': '2022-01-01:16:40.000000Z',
-             'commit__author__email': 'user@email.com',
-             'commit__author__following_url': None,
-             'author__login': None,
-             'commit__author__followers_url': None,
-             'committer__id': 111,
-             'commit__author__gravatar_id': None,
-             'commit__author__login': None}]
+            {'field1__field2__field3': 'test_field3',
+             'field1__field2__field4': 'test_field4',
+             'field2__field3': None,
+             'field2__field4': None,
+             'field2__field5': None,
+             'field6': None,
+             }
+        ]
     )
 
 
@@ -167,8 +103,8 @@ def input_messages_2_null_col_with_different_datatype():
 @pytest.fixture
 def input_messages_3_test_null_fields():
     return """\
-{"type": "SCHEMA","stream": "commits","schema": { "type": ["null", "object"], "properties": { "_sdc_repository": { "type": ["string"] }, "node_id": { "type": ["null", "string"] }, "pr_id": { "type": ["null", "string"] }, "pr_number": { "type": ["null", "integer"] }, "id": { "type": ["null", "string"] }, "updated_at": { "type": ["null", "string"], "format": "date-time" }, "sha": { "type": ["null", "string"] }, "url": { "type": ["null", "string"] }, "parents": { "type": ["null", "array"], "items": { "type": ["null", "object"], "additionalProperties": false, "properties": { "sha": { "type": ["null", "string"] }, "url": { "type": ["null", "string"] }, "html_url": { "type": ["null", "string"] } } } }, "files": { "type": ["null", "array"], "items": { "type": ["null", "object"], "properties": { "filename": { "type": ["null", "string"] }, "additions": { "type": ["null", "number"] }, "deletions": { "type": ["null", "number"] }, "changes": { "type": ["null", "number"] }, "status": { "type": ["null", "string"] }, "raw_url": { "type": ["null", "string"] }, "blob_url": { "type": ["null", "string"] }, "patch": { "type": ["null", "string"] } } } }, "html_url": { "type": ["null", "string"] }, "comments_url": { "type": ["null", "string"] }, "commit": { "type": ["null", "object"], "additionalProperties": false, "properties": { "url": { "type": ["null", "string"] }, "tree": { "type": ["null", "object"], "additionalProperties": false, "properties": { "sha": { "type": ["null", "string"] }, "url": { "type": ["null", "string"] } } }, "author": { "type": ["null", "object"], "properties": { "name": { "type": ["null", "string"] }, "email": { "type": ["null", "string"] }, "login": { "type": ["null", "string"] }, "id": { "type": ["null", "integer"] }, "node_id": { "type": ["null", "string"] }, "avatar_url": { "type": ["null", "string"] }, "gravatar_id": { "type": ["null", "string"] }, "url": { "type": ["null", "string"] }, "html_url": { "type": ["null", "string"] }, "followers_url": { "type": ["null", "string"] }, "following_url": { "type": ["null", "string"] }, "gists_url": { "type": ["null", "string"] }, "starred_url": { "type": ["null", "string"] }, "subscriptions_url": { "type": ["null", "string"] }, "organizations_url": { "type": ["null", "string"] }, "repos_url": { "type": ["null", "string"] }, "events_url": { "type": ["null", "string"] }, "received_events_url": { "type": ["null", "string"] }, "type": { "type": ["null", "string"] }, "site_admin": { "type": ["null", "boolean"] }, "starred_at": { "type": ["null", "string"] }, "date": { "type": ["null", "string"], "format": "date-time" } } }, "message": { "type": ["null", "string"] }, "committer": { "type": ["null", "object"], "properties": { "name": { "type": ["null", "string"] }, "email": { "type": ["null", "string"] }, "login": { "type": ["null", "string"] }, "id": { "type": ["null", "integer"] }, "node_id": { "type": ["null", "string"] }, "avatar_url": { "type": ["null", "string"] }, "gravatar_id": { "type": ["null", "string"] }, "url": { "type": ["null", "string"] }, "html_url": { "type": ["null", "string"] }, "followers_url": { "type": ["null", "string"] }, "following_url": { "type": ["null", "string"] }, "gists_url": { "type": ["null", "string"] }, "starred_url": { "type": ["null", "string"] }, "subscriptions_url": { "type": ["null", "string"] }, "organizations_url": { "type": ["null", "string"] }, "repos_url": { "type": ["null", "string"] }, "events_url": { "type": ["null", "string"] }, "received_events_url": { "type": ["null", "string"] }, "type": { "type": ["null", "string"] }, "site_admin": { "type": ["null", "boolean"] }, "starred_at": { "type": ["null", "string"] }, "date": { "type": ["null", "string"], "format": "date-time" } } }, "comment_count": { "type": ["null", "integer"] } } }, "committer": { "type": ["null", "object"], "properties": { "name": { "type": ["null", "string"] }, "email": { "type": ["null", "string"] }, "login": { "type": ["null", "string"] }, "id": { "type": ["null", "integer"] } } }, "author": { "type": ["null", "object"], "properties": { "name": { "type": ["null", "string"] }, "email": { "type": ["null", "string"] }, "login": { "type": ["null", "string"] }, "id": { "type": ["null", "integer"] } } }, "stats": { "type": ["null", "object"], "properties": { "additions": { "type": ["null", "integer"] }, "deletions": { "type": ["null", "integer"] }, "total": { "type": ["null", "integer"] } } } }, "additionalProperties": false }, "key_properties": ["str"]}
-{"type": "RECORD", "stream": "commits", "record": {"sha": "123", "node_id": "111", "commit": {"author": {"name": "User 1", "email": "user@email.com", "date": "2022-01-01T17:16:40.000000Z"}, "committer": {"name": "GitHub", "email": "noreply@github.com", "date": "2022-01-01:16:40.000000Z"}, "message": "Message", "tree": {"sha": "123", "url": "https://api.github.com/"}, "url": "https://api.github.com/", "comment_count": 0}, "url": "https://api.github.com/", "html_url": "https://github.com/", "comments_url": "https://api.github.com/", "author": null, "committer": {"login": "web-flow", "id": 111, "node_id": "222", "avatar_url": "https://avatars.githubusercontent.com/", "gravatar_id": "", "url": "https://api.github.com/users/web-flow", "html_url": "https://github.com/web-flow", "followers_url": "https://api.github.com/users/web-flow/followers", "following_url": "https://api.github.com/users/web-flow/following{/other_user}", "gists_url": "https://api.github.com/users/web-flow/gists{/gist_id}", "starred_url": "https://api.github.com/users/web-flow/starred{/owner}{/repo}", "subscriptions_url": "https://api.github.com/users/web-flow/subscriptions", "organizations_url": "https://api.github.com/users/web-flow/orgs", "repos_url": "https://api.github.com/users/web-flow/repos", "events_url": "https://api.github.com/users/web-flow/events{/privacy}", "received_events_url": "https://api.github.com/users/web-flow/received_events", "type": "User", "site_admin": false}, "parents": [{"sha": "22222", "url": "https://api.github.com/", "html_url": "https://github.com/"}], "_sdc_repository": "MyRepo", "updated_at": "2022-01-01T17:16:40.000000Z"}}
+{"type": "SCHEMA","stream": "test","schema": { "type": ["null", "object"], "properties": { "field1": { "type": ["null", "object"], "additionalProperties": false, "properties": { "field2": { "type": ["null", "object"], "properties": { "field3": { "type": ["null", "string"] }, "field4": { "type": ["null", "string"] } } } } }, "field2": { "type": ["null", "object"], "properties": { "field3": { "type": ["null", "string"] }, "field4": { "type": ["null", "string"] }, "field5": { "type": ["null", "string"] } } }, "field6": { "type": ["null", "string"] } }, "additionalProperties": false }, "key_properties": ["str"]}
+{"type": "RECORD", "stream": "test", "record": {"field1": {"field2": {"field3": "test_field3", "field4": "test_field4"}}, "field2": null}}
 {"type": "STATE", "value": {"datetime": "2020-10-19"}}
 """
 
@@ -189,7 +125,11 @@ def test_persist_messages(input_messages_1, expected_df_1):
         assert_frame_equal(df, expected_df_1, check_like=True)
 
 
-def test_persist_messages_null_columns(input_messages_3_test_null_fields, expected_df_3):
+def test_persist_messages_null_field(input_messages_3_test_null_fields, expected_df_3):
+    """
+    This tests checks if the null object fields are being correctly exploded according to the schema and
+    if it doesn't replace the values if we have a conflict of the same field name in different levels of object.
+    """
     timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
     input_messages = io.TextIOWrapper(
         io.BytesIO(input_messages_3_test_null_fields.encode()), encoding="utf-8"
