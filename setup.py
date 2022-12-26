@@ -15,6 +15,7 @@ setup(
         "singer-python==5.12.2",
         "pyarrow==8.0.0",
         "psutil==5.9.1",
+        "Pympler<2.0.0"
     ],
     extras_require={"dev": ["pytest==7.1.2", "pandas==1.4.2"]},
     entry_points="""

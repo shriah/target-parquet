@@ -18,6 +18,7 @@ import threading
 import gc
 from enum import Enum
 from multiprocessing import Process, Queue
+from pympler import asizeof
 
 from .helpers import flatten, flatten_schema, flatten_schema_to_pyarrow_schema
 
@@ -207,7 +208,7 @@ def persist_messages(
                     records[stream_name] = [record]
                 else:
                     records[stream_name].append(record)
-                    LOGGER.info(f"Records size: {sys.getsizeof(records)} files")
+                    LOGGER.info(f"Records size: {asizeof.asizeof(records)}")
                     if (file_size > 0) and (not len(records[stream_name]) % file_size):
                         files_created.append(
                             write_file(
