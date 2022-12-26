@@ -18,7 +18,6 @@ import threading
 import gc
 from enum import Enum
 from multiprocessing import Process, Queue
-from pympler import tracker
 
 from .helpers import flatten, flatten_schema, flatten_schema_to_pyarrow_schema
 
@@ -81,7 +80,6 @@ def persist_messages(
     file_size=-1,
     force_output_schema_cast=False,
 ):
-    tr = tracker.SummaryTracker()
     ## Static information shared among processes
     schemas = {}
     key_properties = {}
@@ -209,8 +207,6 @@ def persist_messages(
                     records[stream_name] = [record]
                 else:
                     records[stream_name].append(record)
-                    if len(records[stream_name]) % 1000 == 0:
-                        LOGGER.info(f"SummaryTracker: {tr.diff()}")
                     if (file_size > 0) and (not len(records[stream_name]) % file_size):
                         files_created.append(
                             write_file(
