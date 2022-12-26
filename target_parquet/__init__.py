@@ -193,9 +193,7 @@ def persist_messages(
         while True:
             (message_type, stream_name, record) = receiver.get()  # q.get()
             if message_type == MessageType.RECORD:
-                if (stream_name != current_stream_name) and (
-                    current_stream_name != None
-                ):
+                if stream_name != current_stream_name and current_stream_name is not None:
                     files_created.append(
                         write_file(
                             current_stream_name, records.pop(current_stream_name),
@@ -209,6 +207,7 @@ def persist_messages(
                     records[stream_name] = [record]
                 else:
                     records[stream_name].append(record)
+                    LOGGER.info(f"Records size: {sys.getsizeof(records)} files")
                     if (file_size > 0) and (not len(records[stream_name]) % file_size):
                         files_created.append(
                             write_file(
