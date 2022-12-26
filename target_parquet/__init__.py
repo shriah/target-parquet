@@ -209,7 +209,7 @@ def persist_messages(
                 else:
                     records[stream_name].append(record)
                     if len(records[stream_name]) % 1000 == 0:
-                        LOGGER.info(f"Records size: {asizeof.asizeof(records) / 1024} MB")
+                        LOGGER.info(f"Records size: {asizeof.asizeof(records) / (1024 * 1024)} MB")
                     if (file_size > 0) and (not len(records[stream_name]) % file_size):
                         files_created.append(
                             write_file(
