@@ -206,6 +206,8 @@ def persist_messages(
                 else:
                     records[stream_name] = pd.concat([records[stream_name], pd.DataFrame.from_records([record])],
                                                      ignore_index=True)
+                    if len(records[stream_name]) % 1000 == 0:
+                        print(f"Dataframe memory used: {records[stream_name].memory_usage(deep=True).sum()}")
                     if (file_size > 0) and (not len(records[stream_name]) % file_size):
                         files_created.append(
                             write_file(
