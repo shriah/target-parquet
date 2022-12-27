@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+from collections import defaultdict
 from datetime import datetime
 from io import TextIOWrapper
 import http.client
@@ -53,6 +54,11 @@ def emit_state(state):
         LOGGER.debug("Emitting state {}".format(line))
         sys.stdout.write("{}\n".format(line))
         sys.stdout.flush()
+
+
+def get_memory_used_by_python_process():
+    process = psutil.Process(os.getpid())
+    return process.memory_info().rss  # in bytes
 
 
 class MemoryReporter(threading.Thread):
@@ -187,15 +193,13 @@ def persist_messages(
         files_created = []
         current_stream_name = None
         # records is a list of dictionary of lists of dictionaries that will contain the records that are retrieved from the tap
-        records = {}
+        records = defaultdict(list)
         schemas = {}
 
         while True:
             (message_type, stream_name, record) = receiver.get()  # q.get()
             if message_type == MessageType.RECORD:
-                if (stream_name != current_stream_name) and (
-                    current_stream_name != None
-                ):
+                if stream_name != current_stream_name and current_stream_name is not None:
                     files_created.append(
                         write_file(
                             current_stream_name, records.pop(current_stream_name),
@@ -205,18 +209,17 @@ def persist_messages(
                     ## explicit memory management. This can be usefull when working on very large data groups
                     gc.collect()
                 current_stream_name = stream_name
-                if type(records.get(stream_name)) != list:
-                    records[stream_name] = [record]
-                else:
-                    records[stream_name].append(record)
-                    if (file_size > 0) and (not len(records[stream_name]) % file_size):
-                        files_created.append(
-                            write_file(
-                                current_stream_name, records.pop(current_stream_name),
-                                schemas.get(current_stream_name, {})
-                            )
+                records[stream_name].append(record)
+                if len(records[stream_name]) % 10000 == 0:
+                    print(f'Python memory used: {get_memory_used_by_python_process()}')
+                if (file_size > 0) and (not len(records[stream_name]) % file_size):
+                    files_created.append(
+                        write_file(
+                            current_stream_name, records.pop(current_stream_name),
+                            schemas.get(current_stream_name, {})
                         )
-                        gc.collect()
+                    )
+                    gc.collect()
             elif message_type == MessageType.SCHEMA:
                 schemas[stream_name] = record
             elif message_type == MessageType.EOF:
