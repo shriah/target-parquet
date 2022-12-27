@@ -113,6 +113,7 @@ def persist_messages(
     # Object that signals shutdown
     _break_object = object()
 
+    @profile
     def producer(message_buffer: TextIOWrapper, w_queue: Queue):
         state = None
         try:
@@ -192,38 +193,38 @@ def persist_messages(
 
         while True:
             (message_type, stream_name, record) = receiver.get()  # q.get()
-            if message_type == MessageType.RECORD:
-                if stream_name != current_stream_name and current_stream_name is not None:
-                    files_created.append(
-                        write_file(
-                            current_stream_name, records.pop(current_stream_name),
-                            schemas.get(current_stream_name, {})
-                        )
-                    )
-                    ## explicit memory management. This can be usefull when working on very large data groups
-                    gc.collect()
-                current_stream_name = stream_name
-                if type(records.get(stream_name)) != list:
-                    records[stream_name] = [record]
-                else:
-                    records[stream_name].append(record)
-                    if (file_size > 0) and (not len(records[stream_name]) % file_size):
-                        files_created.append(
-                            write_file(
-                                current_stream_name, records.pop(current_stream_name),
-                                schemas.get(current_stream_name, {})
-                            )
-                        )
-                        gc.collect()
-            elif message_type == MessageType.SCHEMA:
-                schemas[stream_name] = record
-            elif message_type == MessageType.EOF:
-                files_created.append(
-                    write_file(current_stream_name, records.pop(current_stream_name),
-                               schemas.get(current_stream_name, {}))
-                )
-                LOGGER.info(f"Wrote {len(files_created)} files")
-                LOGGER.debug(f"Wrote {files_created} files")
+            # if message_type == MessageType.RECORD:
+            #     if stream_name != current_stream_name and current_stream_name is not None:
+            #         files_created.append(
+            #             write_file(
+            #                 current_stream_name, records.pop(current_stream_name),
+            #                 schemas.get(current_stream_name, {})
+            #             )
+            #         )
+            #         ## explicit memory management. This can be usefull when working on very large data groups
+            #         gc.collect()
+            #     current_stream_name = stream_name
+            #     if type(records.get(stream_name)) != list:
+            #         records[stream_name] = [record]
+            #     else:
+            #         records[stream_name].append(record)
+            #         if (file_size > 0) and (not len(records[stream_name]) % file_size):
+            #             files_created.append(
+            #                 write_file(
+            #                     current_stream_name, records.pop(current_stream_name),
+            #                     schemas.get(current_stream_name, {})
+            #                 )
+            #             )
+            #             gc.collect()
+            # elif message_type == MessageType.SCHEMA:
+            #     schemas[stream_name] = record
+            if message_type == MessageType.EOF:
+                # files_created.append(
+                #     write_file(current_stream_name, records.pop(current_stream_name),
+                #                schemas.get(current_stream_name, {}))
+                # )
+                # LOGGER.info(f"Wrote {len(files_created)} files")
+                # LOGGER.debug(f"Wrote {files_created} files")
                 break
 
     q = Queue()
