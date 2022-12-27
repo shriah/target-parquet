@@ -177,12 +177,12 @@ def test_persist_with_schema_force(input_messages_2_null_col_with_different_data
 
 
 def test_create_dataframe():
-    input_data = [{
+    input_data = pd.DataFrame.from_records([{
         "key_1": 1,
         "key_2__key_3": 2,
         "key_2__key_4__key_5": 3,
         "key_2__key_4__key_6": "['10', '11']",
-    }]
+    }])
 
     schema = {
         "key_1": "integer",
@@ -206,12 +206,12 @@ def test_create_dataframe():
 
 
 def test_create_dataframe_no_schema_cast():
-    input_data = [{
+    input_data = pd.DataFrame.from_records([{
         "key_1": 1,
         "key_2__key_3": 2,
         "key_2__key_4__key_5": 3,
         "key_2__key_4__key_6": "['10', '11']",
-    }]
+    }])
 
     schema = {}
 
@@ -230,12 +230,12 @@ def test_create_dataframe_no_schema_cast():
 
 
 def test_create_dataframe_exception_no_schema():
-    input_data = [{
+    input_data = pd.DataFrame.from_records([{
         "key_1": 1,
         "key_2__key_3": 2,
         "key_2__key_4__key_5": 3,
         "key_2__key_4__key_6": "['10', '11']",
-    }]
+    }])
 
     schema = {}
 

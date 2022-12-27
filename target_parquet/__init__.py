@@ -3,6 +3,8 @@ import argparse
 from datetime import datetime
 from io import TextIOWrapper
 import http.client
+
+import pandas as pd
 import simplejson as json
 from jsonschema import Draft4Validator
 import os
@@ -27,15 +29,11 @@ LOGGER = singer.get_logger()
 LOGGER.setLevel(os.getenv("LOGGER_LEVEL", "INFO"))
 
 
-def create_dataframe(list_dict, schema, force_output_schema_cast=False):
-    fields = set()
-    for d in list_dict:
-        fields = fields.union(d.keys())
-    data = {f: [row.get(f) for row in list_dict] for f in fields}
-    dataframe = pa.table(data)
+def create_dataframe(df, schema, force_output_schema_cast=False):
+    dataframe = pa.Table.from_pandas(df)
     if force_output_schema_cast:
         if schema:
-            dataframe = dataframe.cast(flatten_schema_to_pyarrow_schema(schema, list(fields)))
+            dataframe = dataframe.cast(flatten_schema_to_pyarrow_schema(schema, df.columns))
         else:
             raise Exception("Not possible to force the cast because the schema was not provided.")
     return dataframe
@@ -159,10 +157,10 @@ def persist_messages(
             w_queue.put((MessageType.EOF, _break_object, None))
             raise Err
 
-    def write_file(current_stream_name, record, schema):
+    def write_file(current_stream_name, records, schema):
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S-%f")
         LOGGER.debug(f"Writing files from {current_stream_name} stream")
-        dataframe = create_dataframe(record, schema, force_output_schema_cast)
+        dataframe = create_dataframe(records, schema, force_output_schema_cast)
         if streams_in_separate_folder and not os.path.exists(
             os.path.join(destination_path, current_stream_name)
         ):
@@ -192,38 +190,38 @@ def persist_messages(
 
         while True:
             (message_type, stream_name, record) = receiver.get()  # q.get()
-            # if message_type == MessageType.RECORD:
-            #     if stream_name != current_stream_name and current_stream_name is not None:
-            #         files_created.append(
-            #             write_file(
-            #                 current_stream_name, records.pop(current_stream_name),
-            #                 schemas.get(current_stream_name, {})
-            #             )
-            #         )
-            #         ## explicit memory management. This can be usefull when working on very large data groups
-            #         gc.collect()
-            #     current_stream_name = stream_name
-            #     if type(records.get(stream_name)) != list:
-            #         records[stream_name] = [record]
-            #     else:
-            #         records[stream_name].append(record)
-            #         if (file_size > 0) and (not len(records[stream_name]) % file_size):
-            #             files_created.append(
-            #                 write_file(
-            #                     current_stream_name, records.pop(current_stream_name),
-            #                     schemas.get(current_stream_name, {})
-            #                 )
-            #             )
-            #             gc.collect()
-            # elif message_type == MessageType.SCHEMA:
-            #     schemas[stream_name] = record
-            if message_type == MessageType.EOF:
-                # files_created.append(
-                #     write_file(current_stream_name, records.pop(current_stream_name),
-                #                schemas.get(current_stream_name, {}))
-                # )
-                # LOGGER.info(f"Wrote {len(files_created)} files")
-                # LOGGER.debug(f"Wrote {files_created} files")
+            if message_type == MessageType.RECORD:
+                if stream_name != current_stream_name and current_stream_name is not None:
+                    files_created.append(
+                        write_file(
+                            current_stream_name, records.pop(current_stream_name),
+                            schemas.get(current_stream_name, {})
+                        )
+                    )
+                    ## explicit memory management. This can be usefull when working on very large data groups
+                    gc.collect()
+                current_stream_name = stream_name
+                if stream_name not in records:
+                    records[stream_name] = pd.DataFrame.from_records([record])
+                else:
+                    records[stream_name] = records[stream_name].append(pd.Series(record), ignore_index=True)
+                    if (file_size > 0) and (not len(records[stream_name]) % file_size):
+                        files_created.append(
+                            write_file(
+                                current_stream_name, records.pop(current_stream_name),
+                                schemas.get(current_stream_name, {})
+                            )
+                        )
+                        gc.collect()
+            elif message_type == MessageType.SCHEMA:
+                schemas[stream_name] = record
+            elif message_type == MessageType.EOF:
+                files_created.append(
+                    write_file(current_stream_name, records.pop(current_stream_name),
+                               schemas.get(current_stream_name, {}))
+                )
+                LOGGER.info(f"Wrote {len(files_created)} files")
+                LOGGER.debug(f"Wrote {files_created} files")
                 break
 
     q = Queue()
