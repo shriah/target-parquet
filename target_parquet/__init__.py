@@ -204,7 +204,8 @@ def persist_messages(
                 if stream_name not in records:
                     records[stream_name] = pd.DataFrame.from_records([record])
                 else:
-                    records[stream_name] = records[stream_name].append(pd.Series(record), ignore_index=True)
+                    records[stream_name] = pd.concat([records[stream_name], pd.DataFrame.from_records([record])],
+                                                     ignore_index=True)
                     if (file_size > 0) and (not len(records[stream_name]) % file_size):
                         files_created.append(
                             write_file(
