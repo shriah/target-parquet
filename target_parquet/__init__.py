@@ -3,8 +3,6 @@ import argparse
 from datetime import datetime
 from io import TextIOWrapper
 import http.client
-
-import pandas as pd
 import simplejson as json
 from jsonschema import Draft4Validator
 import os
@@ -29,11 +27,15 @@ LOGGER = singer.get_logger()
 LOGGER.setLevel(os.getenv("LOGGER_LEVEL", "INFO"))
 
 
-def create_dataframe(df, schema, force_output_schema_cast=False):
-    dataframe = pa.Table.from_pandas(df)
+def create_dataframe(list_dict, schema, force_output_schema_cast=False):
+    fields = set()
+    for d in list_dict:
+        fields = fields.union(d.keys())
+    data = {f: [row.get(f) for row in list_dict] for f in fields}
+    dataframe = pa.table(data)
     if force_output_schema_cast:
         if schema:
-            dataframe = dataframe.cast(flatten_schema_to_pyarrow_schema(schema, df.columns))
+            dataframe = dataframe.cast(flatten_schema_to_pyarrow_schema(schema, list(fields)))
         else:
             raise Exception("Not possible to force the cast because the schema was not provided.")
     return dataframe
@@ -62,7 +64,7 @@ class MemoryReporter(threading.Thread):
 
     def run(self):
         while True:
-            LOGGER.info(
+            LOGGER.debug(
                 "Virtual memory usage: %.2f%% of total: %s",
                 self.process.memory_percent(),
                 self.process.memory_info(),
@@ -157,10 +159,10 @@ def persist_messages(
             w_queue.put((MessageType.EOF, _break_object, None))
             raise Err
 
-    def write_file(current_stream_name, records, schema):
+    def write_file(current_stream_name, record, schema):
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S-%f")
         LOGGER.debug(f"Writing files from {current_stream_name} stream")
-        dataframe = create_dataframe(records, schema, force_output_schema_cast)
+        dataframe = create_dataframe(record, schema, force_output_schema_cast)
         if streams_in_separate_folder and not os.path.exists(
             os.path.join(destination_path, current_stream_name)
         ):
@@ -191,7 +193,9 @@ def persist_messages(
         while True:
             (message_type, stream_name, record) = receiver.get()  # q.get()
             if message_type == MessageType.RECORD:
-                if stream_name != current_stream_name and current_stream_name is not None:
+                if (stream_name != current_stream_name) and (
+                    current_stream_name != None
+                ):
                     files_created.append(
                         write_file(
                             current_stream_name, records.pop(current_stream_name),
@@ -201,13 +205,10 @@ def persist_messages(
                     ## explicit memory management. This can be usefull when working on very large data groups
                     gc.collect()
                 current_stream_name = stream_name
-                if stream_name not in records:
-                    records[stream_name] = pd.DataFrame.from_records([record])
+                if type(records.get(stream_name)) != list:
+                    records[stream_name] = [record]
                 else:
-                    records[stream_name] = pd.concat([records[stream_name], pd.DataFrame.from_records([record])],
-                                                     ignore_index=True)
-                    if len(records[stream_name]) % 1000 == 0:
-                        print(f"Dataframe memory used: {records[stream_name].memory_usage(deep=True).sum()}")
+                    records[stream_name].append(record)
                     if (file_size > 0) and (not len(records[stream_name]) % file_size):
                         files_created.append(
                             write_file(
@@ -279,8 +280,8 @@ def main():
         threading.Thread(target=send_usage_stats).start()
     # The target expects that the tap generates UTF-8 encoded text.
     input_messages = TextIOWrapper(sys.stdin.buffer, encoding="utf-8")
-
-    MemoryReporter().start()
+    if LOGGER.level == 0:
+        MemoryReporter().start()
     state = persist_messages(
         input_messages,
         config.get("destination_path", "."),
