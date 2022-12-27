@@ -113,7 +113,6 @@ def persist_messages(
     # Object that signals shutdown
     _break_object = object()
 
-    @profile
     def producer(message_buffer: TextIOWrapper, w_queue: Queue):
         state = None
         try:
