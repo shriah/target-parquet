@@ -1,5 +1,4 @@
 import tempfile
-import time
 
 import pandas as pd
 import pytest
@@ -125,31 +124,6 @@ def test_persist_messages(input_messages_1, expected_df_1):
         filename = [f for f in glob.glob(f"{tmpdirname}/test_{timestamp}/*.parquet")]
         df = ParquetFile(filename[0]).read().to_pandas()
         assert_frame_equal(df, expected_df_1, check_like=True)
-
-
-def test_persist_messages_performance_test(input_messages_1, expected_df_1):
-    """The persist_messages should process 700k messages in less than 1 minute"""
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-
-    def persist_huge_message():
-        input_messages = io.TextIOWrapper(
-            io.BytesIO(input_messages_1.encode() * 100_000), encoding="utf-8"
-        )
-
-        st = time.time()
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            persist_messages(input_messages, f"{tmpdirname}/test_{timestamp}")
-            et = time.time()
-            filename = [f for f in glob.glob(f"{tmpdirname}/test_{timestamp}/*.parquet")]
-            df = ParquetFile(filename[0]).read().to_pandas()
-            assert_frame_equal(df, pd.concat([expected_df_1] * 100_000, ignore_index=True), check_like=True)
-        return et - st
-
-    run1 = persist_huge_message()
-    run2 = persist_huge_message()
-
-    print(f'Duration Run 1 (seconds): {run1} | Duration Run 2 (seconds): {run2}')
-    assert (run1 + run2) / 2 < 60
 
 
 def test_persist_messages_null_field(input_messages_3_test_null_fields, expected_df_3):

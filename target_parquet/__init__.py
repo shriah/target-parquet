@@ -122,16 +122,13 @@ def persist_messages(
                 try:
                     message = singer.parse_message(message).asdict()
                 except json.JSONDecodeError:
-                    raise Exception("Unable to parse:\n{}".format(message))
+                    raise Exception(f'Unable to parse:\n{message}')
 
                 message_type = message["type"]
                 if message_type == "RECORD":
                     if message["stream"] not in schemas:
                         raise ValueError(
-                            "A record for stream {} was encountered before a corresponding schema".format(
-                                message["stream"]
-                            )
-                        )
+                            f'A record for stream {message["stream"]} was encountered before a corresponding schema')
                     stream_name = message["stream"]
                     validators[message["stream"]].validate(message["record"])
                     flattened_record = flatten(message["record"], schemas.get(stream_name, {}))
@@ -139,7 +136,7 @@ def persist_messages(
                     w_queue.put((MessageType.RECORD, stream_name, flattened_record))
                     state = None
                 elif message_type == "STATE":
-                    LOGGER.debug("Setting state to {}".format(message["value"]))
+                    LOGGER.debug(f'Setting state to {message["value"]}')
                     state = message["value"]
                 elif message_type == "SCHEMA":
                     stream = message["stream"]
@@ -149,11 +146,7 @@ def persist_messages(
                     key_properties[stream] = message["key_properties"]
                     w_queue.put((MessageType.SCHEMA, stream, schemas[stream]))
                 else:
-                    LOGGER.warning(
-                        "Unknown message type {} in message {}".format(
-                            message["type"], message
-                        )
-                    )
+                    LOGGER.warning(f'Unknown message type {message["type"]} in message {message}')
             w_queue.put((MessageType.EOF, _break_object, None))
             return state
         except Exception as Err:
@@ -180,7 +173,6 @@ def persist_messages(
                 # Update the pyarrow table on every 1000 records
                 if len(records[current_stream_name]) % 1000 == 0:
                     concat_tables(current_stream_name, dataframes, records, schemas)
-                    LOGGER.info(f'Database[{current_stream_name}] size: {dataframes[current_stream_name].nbytes / 1024 / 1024} MB | {dataframes[current_stream_name].num_rows} rows')
                 if (file_size > 0) and (not records_count[current_stream_name] % file_size):
                     files_created.append(write_file(current_stream_name, dataframes, records, schemas))
             elif message_type == MessageType.SCHEMA:
@@ -198,6 +190,9 @@ def persist_messages(
             dataframes[current_stream_name] = dataframe
         else:
             dataframes[current_stream_name] = pa.concat_tables([dataframes[current_stream_name], dataframe])
+        LOGGER.debug(f'Database[{current_stream_name}] size: '
+                     f'{dataframes[current_stream_name].nbytes / 1024 / 1024} MB | '
+                     f'{dataframes[current_stream_name].num_rows} rows')
 
     def write_file(current_stream_name, dataframes, records, schemas):
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S-%f")
