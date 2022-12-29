@@ -177,9 +177,10 @@ def persist_messages(
                 current_stream_name = stream_name
                 records[stream_name].append(record)
                 records_count[stream_name] += 1
-                # Update the pyarrow table on every 100 records
-                if len(records[current_stream_name]) % 100 == 0:
+                # Update the pyarrow table on every 1000 records
+                if len(records[current_stream_name]) % 1000 == 0:
                     concat_tables(current_stream_name, dataframes, records, schemas)
+                    LOGGER.info(f'Database[{current_stream_name}] size: {dataframes[current_stream_name].nbytes / 1024 / 1024} MB | {dataframes[current_stream_name].num_rows} rows')
                 if (file_size > 0) and (not records_count[current_stream_name] % file_size):
                     files_created.append(write_file(current_stream_name, dataframes, records, schemas))
             elif message_type == MessageType.SCHEMA:
