@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 import argparse
-import tempfile
-from collections import defaultdict
 from datetime import datetime
 from io import TextIOWrapper
 import http.client
@@ -9,7 +7,7 @@ import simplejson as json
 from jsonschema import Draft4Validator
 import os
 import pkg_resources
-from pyarrow.json import read_json
+import pyarrow as pa
 from pyarrow.parquet import ParquetWriter
 import singer
 import sys
@@ -29,14 +27,17 @@ LOGGER = singer.get_logger()
 LOGGER.setLevel(os.getenv("LOGGER_LEVEL", "INFO"))
 
 
-def create_dataframe(temp_file_name, schema, force_output_schema_cast=False):
-    dataframe = read_json(temp_file_name)
+def create_dataframe(list_dict, schema, force_output_schema_cast=False):
+    fields = set()
+    for d in list_dict:
+        fields = fields.union(d.keys())
+    data = {f: [row.get(f) for row in list_dict] for f in fields}
+    dataframe = pa.table(data)
     if force_output_schema_cast:
         if schema:
-            dataframe = dataframe.cast(flatten_schema_to_pyarrow_schema(schema, dataframe.column_names))
+            dataframe = dataframe.cast(flatten_schema_to_pyarrow_schema(schema, list(fields)))
         else:
             raise Exception("Not possible to force the cast because the schema was not provided.")
-    os.remove(temp_file_name)
     return dataframe
 
 class MessageType(Enum):
@@ -52,11 +53,6 @@ def emit_state(state):
         LOGGER.debug("Emitting state {}".format(line))
         sys.stdout.write("{}\n".format(line))
         sys.stdout.flush()
-
-
-def get_memory_used_by_python_process():
-    process = psutil.Process(os.getpid())
-    return process.memory_info().rss  # in bytes
 
 
 class MemoryReporter(threading.Thread):
@@ -163,11 +159,10 @@ def persist_messages(
             w_queue.put((MessageType.EOF, _break_object, None))
             raise Err
 
-    def write_file(current_stream_name, tmpdir, schema):
-        temp_file_name = os.path.join(tmpdir, f'{current_stream_name}.jsonl')
+    def write_file(current_stream_name, record, schema):
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S-%f")
         LOGGER.debug(f"Writing files from {current_stream_name} stream")
-        dataframe = create_dataframe(temp_file_name, schema, force_output_schema_cast)
+        dataframe = create_dataframe(record, schema, force_output_schema_cast)
         if streams_in_separate_folder and not os.path.exists(
             os.path.join(destination_path, current_stream_name)
         ):
@@ -191,45 +186,47 @@ def persist_messages(
     def consumer(receiver):
         files_created = []
         current_stream_name = None
-        records_count = defaultdict(int)
+        # records is a list of dictionary of lists of dictionaries that will contain the records that are retrieved from the tap
+        records = {}
         schemas = {}
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            while True:
-                (message_type, stream_name, record) = receiver.get()  # q.get()
-                if message_type == MessageType.RECORD:
-                    if stream_name != current_stream_name and current_stream_name is not None:
-                        files_created.append(
-                            write_file(
-                                current_stream_name, tmpdir,
-                                schemas.get(current_stream_name, {})
-                            )
-                        )
-                        ## explicit memory management. This can be usefull when working on very large data groups
-                        gc.collect()
-                    current_stream_name = stream_name
-                    with open(os.path.join(tmpdir, f'{current_stream_name}.jsonl'), 'a', encoding='utf-8') as json_file:
-                        json_file.write(json.dumps(record) + '\n')
-                        records_count[current_stream_name] += 1
-                    if (file_size > 0) and (not records_count[current_stream_name] % file_size):
-                        files_created.append(
-                            write_file(
-                                current_stream_name, tmpdir,
-                                schemas.get(current_stream_name, {})
-                            )
-                        )
-                        records_count[current_stream_name] = 0
-                        gc.collect()
-                elif message_type == MessageType.SCHEMA:
-                    schemas[stream_name] = record
-                elif message_type == MessageType.EOF:
+        while True:
+            (message_type, stream_name, record) = receiver.get()  # q.get()
+            if message_type == MessageType.RECORD:
+                if (stream_name != current_stream_name) and (
+                    current_stream_name != None
+                ):
                     files_created.append(
-                        write_file(current_stream_name, tmpdir,
-                                   schemas.get(current_stream_name, {}))
+                        write_file(
+                            current_stream_name, records.pop(current_stream_name),
+                            schemas.get(current_stream_name, {})
+                        )
                     )
-                    LOGGER.info(f"Wrote {len(files_created)} files")
-                    LOGGER.debug(f"Wrote {files_created} files")
-                    break
+                    ## explicit memory management. This can be usefull when working on very large data groups
+                    gc.collect()
+                current_stream_name = stream_name
+                if type(records.get(stream_name)) != list:
+                    records[stream_name] = [record]
+                else:
+                    records[stream_name].append(record)
+                    if (file_size > 0) and (not len(records[stream_name]) % file_size):
+                        files_created.append(
+                            write_file(
+                                current_stream_name, records.pop(current_stream_name),
+                                schemas.get(current_stream_name, {})
+                            )
+                        )
+                        gc.collect()
+            elif message_type == MessageType.SCHEMA:
+                schemas[stream_name] = record
+            elif message_type == MessageType.EOF:
+                files_created.append(
+                    write_file(current_stream_name, records.pop(current_stream_name),
+                               schemas.get(current_stream_name, {}))
+                )
+                LOGGER.info(f"Wrote {len(files_created)} files")
+                LOGGER.debug(f"Wrote {files_created} files")
+                break
 
     q = Queue()
     t2 = Process(
@@ -240,6 +237,7 @@ def persist_messages(
     state = producer(messages, q)
     t2.join()
     return state
+
 
 def send_usage_stats():
     try:

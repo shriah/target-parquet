@@ -1,4 +1,3 @@
-import os
 import tempfile
 import pandas as pd
 import pytest
@@ -178,73 +177,67 @@ def test_persist_with_schema_force(input_messages_2_null_col_with_different_data
 
 
 def test_create_dataframe():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        input_tempfile = os.path.join(tmpdir, 'input_tempfile.jsonl')
-        pd.DataFrame.from_records([{
-            "key_1": 1,
-            "key_2__key_3": 2,
-            "key_2__key_4__key_5": 3,
-            "key_2__key_4__key_6": "['10', '11']",
-        }]).to_json(input_tempfile, orient='records', lines=True)
+    input_data = [{
+        "key_1": 1,
+        "key_2__key_3": 2,
+        "key_2__key_4__key_5": 3,
+        "key_2__key_4__key_6": "['10', '11']",
+    }]
 
-        schema = {
-            "key_1": "integer",
-            "key_2__key_3": ["null", "string"],
-            "key_2__key_4__key_5": ["null", "integer"],
-            "key_2__key_4__key_6": "string"
-        }
+    schema = {
+        "key_1": "integer",
+        "key_2__key_3": ["null", "string"],
+        "key_2__key_4__key_5": ["null", "integer"],
+        "key_2__key_4__key_6": "string"
+    }
 
-        expected_schema = pa.schema([
-            pa.field("key_1", pa.int64(), False),
-            pa.field("key_2__key_4__key_6", pa.string(), False),
-            pa.field("key_2__key_3", pa.string(), True),
-            pa.field("key_2__key_4__key_5", pa.int64(), True)
-        ])
+    expected_schema = pa.schema([
+        pa.field("key_1", pa.int64(), False),
+        pa.field("key_2__key_4__key_6", pa.string(), False),
+        pa.field("key_2__key_3", pa.string(), True),
+        pa.field("key_2__key_4__key_5", pa.int64(), True)
+    ])
 
-        df = create_dataframe(input_tempfile, schema, force_output_schema_cast=True)
-        assert sorted(df.column_names) == sorted(expected_schema.names)
-        for field in expected_schema:
-            assert df.schema.field(field.name).type == field.type
-        assert df.num_rows == 1
+    df = create_dataframe(input_data, schema, force_output_schema_cast=True)
+    assert sorted(df.column_names) == sorted(expected_schema.names)
+    for field in expected_schema:
+        assert df.schema.field(field.name).type == field.type
+    assert df.num_rows == 1
 
 
 def test_create_dataframe_no_schema_cast():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        input_tempfile = os.path.join(tmpdir, 'input_tempfile.jsonl')
-        pd.DataFrame.from_records([{
-            "key_1": 1,
-            "key_2__key_3": 2,
-            "key_2__key_4__key_5": 3,
-            "key_2__key_4__key_6": "['10', '11']",
-        }]).to_json(input_tempfile, orient='records', lines=True)
+    input_data = [{
+        "key_1": 1,
+        "key_2__key_3": 2,
+        "key_2__key_4__key_5": 3,
+        "key_2__key_4__key_6": "['10', '11']",
+    }]
 
-        schema = {}
+    schema = {}
 
-        expected_schema = pa.schema([
-            pa.field("key_1", pa.int64(), False),
-            pa.field("key_2__key_4__key_6", pa.string(), False),
-            pa.field("key_2__key_3", pa.int64(), True),
-            pa.field("key_2__key_4__key_5", pa.int64(), True)
-        ])
+    expected_schema = pa.schema([
+        pa.field("key_1", pa.int64(), False),
+        pa.field("key_2__key_4__key_6", pa.string(), False),
+        pa.field("key_2__key_3", pa.int64(), True),
+        pa.field("key_2__key_4__key_5", pa.int64(), True)
+    ])
 
-        df = create_dataframe(input_tempfile, schema, force_output_schema_cast=False)
-        assert sorted(df.column_names) == sorted(expected_schema.names)
-        for field in expected_schema:
-            assert df.schema.field(field.name).type == field.type
-        assert df.num_rows == 1
+    df = create_dataframe(input_data, schema, force_output_schema_cast=False)
+    assert sorted(df.column_names) == sorted(expected_schema.names)
+    for field in expected_schema:
+        assert df.schema.field(field.name).type == field.type
+    assert df.num_rows == 1
 
 
 def test_create_dataframe_exception_no_schema():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        input_tempfile = os.path.join(tmpdir, 'input_tempfile.jsonl')
-        pd.DataFrame.from_records([{
-            "key_1": 1,
-            "key_2__key_3": 2,
-            "key_2__key_4__key_5": 3,
-            "key_2__key_4__key_6": "['10', '11']",
-        }]).to_json(input_tempfile, orient='records', lines=True)
+    input_data = [{
+        "key_1": 1,
+        "key_2__key_3": 2,
+        "key_2__key_4__key_5": 3,
+        "key_2__key_4__key_6": "['10', '11']",
+    }]
 
-        schema = {}
+    schema = {}
 
-        with pytest.raises(Exception, match='Not possible to force the cast because the schema was not provided.'):
-            create_dataframe(input_tempfile, schema, force_output_schema_cast=True)
+    with pytest.raises(Exception, match='Not possible to force the cast because the schema was not provided.'):
+        create_dataframe(input_data, schema, force_output_schema_cast=True)
