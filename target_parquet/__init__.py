@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+from collections import defaultdict
 from datetime import datetime
 from io import TextIOWrapper
 import http.client
@@ -159,10 +160,49 @@ def persist_messages(
             w_queue.put((MessageType.EOF, _break_object, None))
             raise Err
 
-    def write_file(current_stream_name, record, schema):
+    def consumer(receiver):
+        files_created = []
+        current_stream_name = None
+        # records is a list of dictionary of lists of dictionaries that will contain the records that are retrieved from the tap
+        records = defaultdict(list)
+        records_count = defaultdict(int)
+        dataframes = {}
+        schemas = {}
+
+        while True:
+            (message_type, stream_name, record) = receiver.get()  # q.get()
+            if message_type == MessageType.RECORD:
+                if stream_name != current_stream_name and current_stream_name is not None:
+                    files_created.append(write_file(current_stream_name, dataframes, records, schemas))
+                current_stream_name = stream_name
+                records[stream_name].append(record)
+                records_count[stream_name] += 1
+                # Update the pyarrow table on every 100 records
+                if len(records[current_stream_name]) % 100 == 0:
+                    concat_tables(current_stream_name, dataframes, records, schemas)
+                if (file_size > 0) and (not records_count[current_stream_name] % file_size):
+                    files_created.append(write_file(current_stream_name, dataframes, records, schemas))
+            elif message_type == MessageType.SCHEMA:
+                schemas[stream_name] = record
+            elif message_type == MessageType.EOF:
+                files_created.append(write_file(current_stream_name, dataframes, records, schemas))
+                LOGGER.info(f"Wrote {len(files_created)} files")
+                LOGGER.debug(f"Wrote {files_created} files")
+                break
+
+    def concat_tables(current_stream_name, dataframes, records, schemas):
+        dataframe = create_dataframe(records.pop(current_stream_name), schemas.get(current_stream_name, {}),
+                                     force_output_schema_cast)
+        if current_stream_name not in dataframes:
+            dataframes[current_stream_name] = dataframe
+        else:
+            dataframes[current_stream_name] = pa.concat_tables([dataframes[current_stream_name], dataframe])
+
+    def write_file(current_stream_name, dataframes, records, schemas):
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S-%f")
+        if records[current_stream_name]:
+            concat_tables(current_stream_name, dataframes, records, schemas)
         LOGGER.debug(f"Writing files from {current_stream_name} stream")
-        dataframe = create_dataframe(record, schema, force_output_schema_cast)
         if streams_in_separate_folder and not os.path.exists(
             os.path.join(destination_path, current_stream_name)
         ):
@@ -177,56 +217,12 @@ def persist_messages(
         filepath = os.path.expanduser(os.path.join(destination_path, filename))
         with open(filepath, "wb") as f:
             ParquetWriter(
-                f, dataframe.schema, compression=compression_method
-            ).write_table(dataframe)
+                f, dataframes[current_stream_name].schema, compression=compression_method
+            ).write_table(dataframes[current_stream_name])
         ## explicit memory management. This can be usefull when working on very large data groups
-        del dataframe
+        del dataframes[current_stream_name]
+        gc.collect()
         return filepath
-
-    def consumer(receiver):
-        files_created = []
-        current_stream_name = None
-        # records is a list of dictionary of lists of dictionaries that will contain the records that are retrieved from the tap
-        records = {}
-        schemas = {}
-
-        while True:
-            (message_type, stream_name, record) = receiver.get()  # q.get()
-            if message_type == MessageType.RECORD:
-                if (stream_name != current_stream_name) and (
-                    current_stream_name != None
-                ):
-                    files_created.append(
-                        write_file(
-                            current_stream_name, records.pop(current_stream_name),
-                            schemas.get(current_stream_name, {})
-                        )
-                    )
-                    ## explicit memory management. This can be usefull when working on very large data groups
-                    gc.collect()
-                current_stream_name = stream_name
-                if type(records.get(stream_name)) != list:
-                    records[stream_name] = [record]
-                else:
-                    records[stream_name].append(record)
-                    if (file_size > 0) and (not len(records[stream_name]) % file_size):
-                        files_created.append(
-                            write_file(
-                                current_stream_name, records.pop(current_stream_name),
-                                schemas.get(current_stream_name, {})
-                            )
-                        )
-                        gc.collect()
-            elif message_type == MessageType.SCHEMA:
-                schemas[stream_name] = record
-            elif message_type == MessageType.EOF:
-                files_created.append(
-                    write_file(current_stream_name, records.pop(current_stream_name),
-                               schemas.get(current_stream_name, {}))
-                )
-                LOGGER.info(f"Wrote {len(files_created)} files")
-                LOGGER.debug(f"Wrote {files_created} files")
-                break
 
     q = Queue()
     t2 = Process(
