@@ -166,7 +166,7 @@ def persist_messages(
             (message_type, stream_name, record) = receiver.get()  # q.get()
             if message_type == MessageType.RECORD:
                 if stream_name != current_stream_name and current_stream_name is not None:
-                    files_created.append(write_file(current_stream_name, dataframes, records, schemas))
+                    write_file(current_stream_name, dataframes, records, schemas, files_created)
                 current_stream_name = stream_name
                 records[stream_name].append(record)
                 records_count[stream_name] += 1
@@ -174,11 +174,11 @@ def persist_messages(
                 if len(records[current_stream_name]) % 1000 == 0:
                     concat_tables(current_stream_name, dataframes, records, schemas)
                 if (file_size > 0) and (not records_count[current_stream_name] % file_size):
-                    files_created.append(write_file(current_stream_name, dataframes, records, schemas))
+                    write_file(current_stream_name, dataframes, records, schemas, files_created)
             elif message_type == MessageType.SCHEMA:
                 schemas[stream_name] = record
             elif message_type == MessageType.EOF:
-                files_created.append(write_file(current_stream_name, dataframes, records, schemas))
+                write_file(current_stream_name, dataframes, records, schemas, files_created)
                 LOGGER.info(f"Wrote {len(files_created)} files")
                 LOGGER.debug(f"Wrote {files_created} files")
                 break
@@ -194,31 +194,34 @@ def persist_messages(
                      f'{dataframes[current_stream_name].nbytes / 1024 / 1024} MB | '
                      f'{dataframes[current_stream_name].num_rows} rows')
 
-    def write_file(current_stream_name, dataframes, records, schemas):
+    def write_file(current_stream_name, dataframes, records, schemas, files_created_list):
         timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S-%f")
         if records[current_stream_name]:
             concat_tables(current_stream_name, dataframes, records, schemas)
-        LOGGER.debug(f"Writing files from {current_stream_name} stream")
-        if streams_in_separate_folder and not os.path.exists(
-            os.path.join(destination_path, current_stream_name)
-        ):
-            os.makedirs(os.path.join(destination_path, current_stream_name))
-        filename = (
-            current_stream_name
-            + filename_separator
-            + timestamp
-            + compression_extension
-            + ".parquet"
-        )
-        filepath = os.path.expanduser(os.path.join(destination_path, filename))
-        with open(filepath, "wb") as f:
-            ParquetWriter(
-                f, dataframes[current_stream_name].schema, compression=compression_method
-            ).write_table(dataframes[current_stream_name])
-        ## explicit memory management. This can be usefull when working on very large data groups
-        del dataframes[current_stream_name]
-        gc.collect()
-        return filepath
+
+        if current_stream_name in dataframes:
+            LOGGER.debug(f"Writing files from {current_stream_name} stream")
+            if streams_in_separate_folder and not os.path.exists(
+                os.path.join(destination_path, current_stream_name)
+            ):
+                os.makedirs(os.path.join(destination_path, current_stream_name))
+            filename = (
+                current_stream_name
+                + filename_separator
+                + timestamp
+                + compression_extension
+                + ".parquet"
+            )
+            filepath = os.path.expanduser(os.path.join(destination_path, filename))
+            with open(filepath, "wb") as f:
+                ParquetWriter(
+                    f, dataframes[current_stream_name].schema, compression=compression_method
+                ).write_table(dataframes[current_stream_name])
+                files_created_list.append(filepath)
+                LOGGER.info(f"Wrote file {filepath} from {current_stream_name} stream")
+            # explicit memory management. This can be usefull when working on very large data groups
+            del dataframes[current_stream_name]
+            gc.collect()
 
     q = Queue()
     t2 = Process(
