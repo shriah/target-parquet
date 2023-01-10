@@ -161,8 +161,9 @@ def persist_messages(
         records_count = defaultdict(int)
         dataframes = {}
         schemas = {}
+        more_messages = True
 
-        while True:
+        while more_messages:
             (message_type, stream_name, record) = receiver.get()  # q.get()
             if message_type == MessageType.RECORD:
                 if stream_name != current_stream_name and current_stream_name is not None:
@@ -181,7 +182,7 @@ def persist_messages(
                 write_file(current_stream_name, dataframes, records, schemas, files_created)
                 LOGGER.info(f"Wrote {len(files_created)} files")
                 LOGGER.debug(f"Wrote {files_created} files")
-                break
+                more_messages = False
 
     def concat_tables(current_stream_name, dataframes, records, schemas):
         dataframe = create_dataframe(records.pop(current_stream_name), schemas.get(current_stream_name, {}),
