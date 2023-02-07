@@ -1,3 +1,4 @@
+import json
 from typing import List, Union
 
 try:
@@ -53,7 +54,7 @@ def flatten(dictionary, flat_schema, parent_key="", sep="__"):
                 items.update(flatten(value, flat_schema, new_key, sep=sep))
             else:
                 if new_key in flat_schema:
-                    items[new_key] = str(value) if isinstance(value, list) else value
+                    items[new_key] = json.dumps(value) if isinstance(value, list) else value
     return items
 
 

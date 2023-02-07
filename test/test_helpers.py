@@ -15,7 +15,7 @@ def test_flatten():
         "key_1": 1,
         "key_2__key_3": 2,
         "key_2__key_4__key_5": 3,
-        "key_2__key_4__key_6": "['10', '11']",
+        "key_2__key_4__key_6": '["10", "11"]',
     }
 
     flat_schema = {
@@ -169,3 +169,31 @@ def test_flatten_schema_to_pyarrow_schema_type_not_defined():
 
     with pytest.raises(NotImplementedError):
         flatten_schema_to_pyarrow_schema(in_dict, ["created_at"])
+
+
+def test_flatten_array_fields():
+    in_dict = {
+        "int_array": [1, 2, 3],
+        "array_of_int_array": [1, 2, [3, 4]],
+        "array_of_mixed_types": ["a", {"b":"value"}, ["c", "d"]],
+        "string_array": ["a", "b", "c"],
+        "object_array": [{"int": 1}, {"string1": "aaa'aaa"}, {"string2": 'aaa"aaa'}, {"array": [1, 2, 3]}, {'true': True}, {'false': False}, {'null': None}],
+    }
+    expected = {
+        'int_array': '[1, 2, 3]',
+        'array_of_int_array': '[1, 2, [3, 4]]',
+        "array_of_mixed_types": '["a", {"b": "value"}, ["c", "d"]]',
+        'string_array': '["a", "b", "c"]',
+        'object_array': '[{"int": 1}, {"string1": "aaa\'aaa"}, {"string2": "aaa\\"aaa"}, {"array": [1, 2, 3]}, {"true": true}, {"false": false}, {"null": null}]'
+    }
+
+    flat_schema = {
+        "int_array": "array",
+        "array_of_int_array": "array",
+        "array_of_mixed_types": "array",
+        "string_array": ["null", "array"],
+        "object_array": "array",
+    }
+    output = flatten(in_dict, flat_schema)
+    print(output)
+    assert output == expected
