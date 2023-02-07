@@ -174,20 +174,23 @@ def test_flatten_schema_to_pyarrow_schema_type_not_defined():
 def test_flatten_array_fields():
     in_dict = {
         "int_array": [1, 2, 3],
-        "array_of_array": [1, 2, [3, 4]],
+        "array_of_int_array": [1, 2, [3, 4]],
+        "array_of_mixed_types": ["a", {"b":"value"}, ["c", "d"]],
         "string_array": ["a", "b", "c"],
         "object_array": [{"int": 1}, {"string1": "aaa'aaa"}, {"string2": 'aaa"aaa'}, {"array": [1, 2, 3]}, {'true': True}, {'false': False}, {'null': None}],
     }
     expected = {
         'int_array': '[1, 2, 3]',
-        'array_of_array': '[1, 2, [3, 4]]',
+        'array_of_int_array': '[1, 2, [3, 4]]',
+        "array_of_mixed_types": '["a", {"b": "value"}, ["c", "d"]]',
         'string_array': '["a", "b", "c"]',
         'object_array': '[{"int": 1}, {"string1": "aaa\'aaa"}, {"string2": "aaa\\"aaa"}, {"array": [1, 2, 3]}, {"true": true}, {"false": false}, {"null": null}]'
     }
 
     flat_schema = {
         "int_array": "array",
-        "array_of_array": "array",
+        "array_of_int_array": "array",
+        "array_of_mixed_types": "array",
         "string_array": ["null", "array"],
         "object_array": "array",
     }
