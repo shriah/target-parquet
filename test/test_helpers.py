@@ -15,7 +15,7 @@ def test_flatten():
         "key_1": 1,
         "key_2__key_3": 2,
         "key_2__key_4__key_5": 3,
-        "key_2__key_4__key_6": "['10', '11']",
+        "key_2__key_4__key_6": '["10", "11"]',
     }
 
     flat_schema = {
