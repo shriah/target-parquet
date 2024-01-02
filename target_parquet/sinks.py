@@ -16,7 +16,7 @@ from target_parquet.utils.parquet import (
 )
 
 
-class parquetSink(BatchSink):
+class ParquetSink(BatchSink):
     """parquet target sink class."""
 
     flatten_max_level = 20  # Max level of nesting to flatten

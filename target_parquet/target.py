@@ -6,11 +6,11 @@ from singer_sdk import typing as th
 from singer_sdk.target_base import Target
 
 from target_parquet.sinks import (
-    parquetSink,
+    ParquetSink,
 )
 
 
-class Targetparquet(Target):
+class TargetParquet(Target):
     """Sample target for parquet."""
 
     name = "target-parquet"
@@ -56,8 +56,8 @@ class Targetparquet(Target):
         ),
     ).to_dict()
 
-    default_sink_class = parquetSink
+    default_sink_class = ParquetSink
 
 
 if __name__ == "__main__":
-    Targetparquet.cli()
+    TargetParquet.cli()
