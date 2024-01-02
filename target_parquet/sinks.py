@@ -116,9 +116,9 @@ class ParquetSink(BatchSink):
             get_pyarrow_table_size(self.pyarrow_df)
             > self.config["max_pyarrow_table_size"]
         ):
-            self._write_file()
+            self.write_file()
 
-    def _write_file(self):
+    def write_file(self):
         """Write a local file"""
         if self.pyarrow_df is not None:
             write_parquet_file(
@@ -132,6 +132,6 @@ class ParquetSink(BatchSink):
 
     def clean_up(self) -> None:
         """Perform any clean up actions required at end of a stream"""
-        self._write_file()
+        self.write_file()
         super().clean_up()
 
