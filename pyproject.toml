@@ -52,4 +52,4 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 # CLI declaration
-target-parquet = 'target_parquet.target:Targetparquet.cli'
+target-parquet = 'target_parquet.target:TargetParquet.cli'

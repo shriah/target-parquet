@@ -7,7 +7,7 @@ import typing as t
 import pytest
 from singer_sdk.testing import get_target_test_class
 
-from target_parquet.target import Targetparquet
+from target_parquet.target import TargetParquet
 
 # TODO: Initialize minimal target config
 SAMPLE_CONFIG: dict[str, t.Any] = {}
@@ -15,12 +15,12 @@ SAMPLE_CONFIG: dict[str, t.Any] = {}
 
 # Run standard built-in target tests from the SDK:
 StandardTargetTests = get_target_test_class(
-    target_class=Targetparquet,
+    target_class=TargetParquet,
     config=SAMPLE_CONFIG,
 )
 
 
-class TestTargetparquet(StandardTargetTests):  # type: ignore[misc, valid-type]
+class TestTargetParquet(StandardTargetTests):  # type: ignore[misc, valid-type]
     """Standard Target Tests."""
 
     @pytest.fixture(scope="class")
