@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import Dict, List, Optional
 
@@ -24,8 +25,10 @@ EXTENSION_MAPPING = {
     "lz4": ".lz4",
 }
 
+logger = logging.getLogger(__name__)
 
-def _field_type_to_pyarrow_field(field_name: str, input_types: dict) -> pa.Field:
+
+def _field_type_to_pyarrow_field(field_name: str, input_types: dict, required_fields: list[str]) -> pa.Field:
     types = input_types.get("type", [])
     # If type is not defined, check if anyOf is defined
     if not types:
@@ -36,17 +39,12 @@ def _field_type_to_pyarrow_field(field_name: str, input_types: dict) -> pa.Field
                 else:
                     types.append(t)
     types = [types] if isinstance(types, str) else types
-    types_uppercase = {item.upper() for item in types}
-    nullable = "NULL" in types_uppercase
-    types_uppercase.discard("NULL")
+    types_uppercase = [item.upper() for item in types]
+    nullable = "NULL" in types_uppercase or field_name not in required_fields
+    if "NULL" in types_uppercase:
+        types_uppercase.remove("NULL")
     input_type = list(types_uppercase)[0] if types_uppercase else ""
     pyarrow_type = FIELD_TYPE_TO_PYARROW.get(input_type, pa.string())
-
-    if not pyarrow_type:
-        raise NotImplementedError(
-            f'Data types "{input_types}" for field {field_name} is not yet supported.'
-        )
-
     return pa.field(field_name, pyarrow_type, nullable)
 
 
@@ -70,9 +68,10 @@ def flatten_schema_to_pyarrow_schema(flatten_schema_dictionary: dict) -> pa.Sche
         ])
     """
     flatten_schema = flatten_schema_dictionary.get("properties", {})
+    required_fields = flatten_schema_dictionary.get("required", [])
     return pa.schema(
         [
-            _field_type_to_pyarrow_field(field_name, field_input_types)
+            _field_type_to_pyarrow_field(field_name, field_input_types, required_fields=required_fields)
             for field_name, field_input_types in flatten_schema.items()
         ]
     )

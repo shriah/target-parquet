@@ -67,8 +67,6 @@ class ParquetSink(BatchSink):
                 self.extra_values.keys() == self.extra_values_types.keys()
             ), "extra_fields and extra_fields_types must have the same keys"
         if self.partition_cols:
-            self.logger.info(self.partition_cols)
-            self.logger.info(self.flatten_schema.keys())
             assert set(self.partition_cols).issubset(
                 set(self.pyarrow_schema.names)
             ), "partition_cols must be in the schema"
