@@ -108,30 +108,10 @@ def write_parquet_file(
         partition_cols=partition_cols or None,
         use_threads=True,
         use_legacy_dataset=False,
-        basename_template=f"{basename_template}.{EXTENSION_MAPPING[compression_method.lower()]}.parquet"
+        basename_template=f"{basename_template}{EXTENSION_MAPPING[compression_method.lower()]}.parquet"
         if basename_template
         else None,
     )
-
-
-def get_single_parquet_file(dir_path: str) -> Optional[str]:
-    """Return the path of the single parquet file in the directory"""
-    files = [
-        os.path.join(root, file)
-        for root, dirs, files in os.walk(dir_path)
-        for file in files
-        if file.endswith(".parquet")
-    ]
-    assert (
-        len(files) <= 1
-    ), f"Expected 1 parquet file or None in local temp path {dir_path}, found {len(files)}"
-    return files[0] if files else None
-
-
-def read_parquet_file(dir_path: str) -> Optional[pa.Table]:
-    """Read a single parquet file and return a pyarrow table"""
-    file = get_single_parquet_file(dir_path)
-    return pq.read_table(file) if file else None
 
 
 def get_pyarrow_table_size(table: pa.Table) -> float:
