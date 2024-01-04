@@ -140,3 +140,4 @@ output/
 plugins/
 
 .idea/
+tmp/
