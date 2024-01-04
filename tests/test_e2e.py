@@ -59,6 +59,49 @@ def example1_schema_messages():
     }
 
 
+@pytest.fixture()
+def example2_schema_messages_mixed():
+    stream_name = f"test_schema_{str(uuid4()).split('-')[-1]}"
+    schema_message1 = {
+        "type": "SCHEMA",
+        "stream": f'{stream_name}_A',
+        "schema": {
+            "type": "object",
+            "properties": {"col_a": th.StringType().to_dict()},
+        },
+    }
+    schema_message2 = {
+        "type": "SCHEMA",
+        "stream": f'{stream_name}_B',
+        "schema": {
+            "type": "object",
+            "properties": {"col_b": th.StringType().to_dict()},
+        },
+    }
+    tap_output = "\n".join(
+        json.dumps(msg)
+        for msg in [
+            schema_message1,
+            {
+                "type": "RECORD",
+                "stream": f'{stream_name}_A',
+                "record": {"col_a": "samplerow1"},
+            },
+            schema_message2,
+            {
+                "type": "RECORD",
+                "stream": f'{stream_name}_B',
+                "record": {"col_b": "samplerow2"},
+            }
+        ] * 3
+    )
+    return {
+        'stream_names': [f'{stream_name}_A', f'{stream_name}_B'],
+        'schemas': [schema_message1, schema_message2],
+        'messages': tap_output,
+    }
+
+
 def test_e2e_create_file(monkeypatch, test_output_dir, sample_config, example1_schema_messages):
     """
     Test that the target creates a file with the expected records
@@ -75,6 +118,30 @@ def test_e2e_create_file(monkeypatch, test_output_dir, sample_config, example1_s
 
     expected = pd.DataFrame({"col_a": ["samplerow1", "samplerow2"]})
     result = pd.read_parquet(test_output_dir / example1_schema_messages['stream_name'])
+    assert expected.equals(result)
+
+
+def test_e2e_create_file_mixed_schemas(monkeypatch, test_output_dir, sample_config, example2_schema_messages_mixed):
+    """
+    Test that the target creates a file for each schema if we have mixed schemas
+    """
+    monkeypatch.setattr('time.time', lambda: 1700000000)
+
+    target_sync_test(
+        TargetParquet(config=sample_config),
+        input=StringIO(example2_schema_messages_mixed['messages']),
+        finalize=True,
+    )
+
+    assert len(os.listdir(test_output_dir / example2_schema_messages_mixed['stream_names'][0])) == 1
+    assert len(os.listdir(test_output_dir / example2_schema_messages_mixed['stream_names'][1])) == 1
+
+    expected = pd.DataFrame({"col_a": ["samplerow1"] * 3})
+    result = pd.read_parquet(test_output_dir / example2_schema_messages_mixed['stream_names'][0])
+    assert expected.equals(result)
+
+    expected = pd.DataFrame({"col_b": ["samplerow2"] * 3})
+    result = pd.read_parquet(test_output_dir / example2_schema_messages_mixed['stream_names'][1])
     assert expected.equals(result)
 
 
@@ -189,6 +256,9 @@ def test_e2e_more_records_than_batch_size(monkeypatch, test_output_dir, sample_c
 
 
 def test_e2e_multiple_files(monkeypatch, test_output_dir, sample_config):
+    """
+    Test that the target creates multiple files when the pyarrow file size limit is reached
+    """
     monkeypatch.setattr('time.time', lambda: 1700000000)
     stream_name = f"test_schema_{str(uuid4()).split('-')[-1]}"
     schema_message = {
@@ -256,7 +326,7 @@ def test_e2e_extra_fields(monkeypatch, test_output_dir, sample_config, example1_
 
 def test_e2e_partition_cols(monkeypatch, test_output_dir, sample_config, example1_schema_messages):
     """
-    Test if the target can add extra fields in the record
+    Test if the target can partition the data
     """
     monkeypatch.setattr('time.time', lambda: 1700000000)
 
@@ -274,6 +344,9 @@ def test_e2e_partition_cols(monkeypatch, test_output_dir, sample_config, example
 
 
 def test_e2e_extra_fields_validation(monkeypatch, sample_config, example1_schema_messages):
+    """
+    Test extra_fields and extra_fields_types validation
+    """
     with pytest.raises(AssertionError, match='extra_fields and extra_fields_types must be both set or both unset'):
         target_sync_test(
             TargetParquet(config=sample_config | {'extra_fields': 'field1=value1'}),
@@ -297,6 +370,9 @@ def test_e2e_extra_fields_validation(monkeypatch, sample_config, example1_schema
 
 
 def test_e2e_partition_cols_validation(monkeypatch, sample_config, example1_schema_messages):
+    """
+    Test partition_cols validation
+    """
     with pytest.raises(AssertionError, match='partition_cols must be in the schema'):
         target_sync_test(
             TargetParquet(config=sample_config | {'partition_cols': 'col_b'}),
