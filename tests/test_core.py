@@ -4,19 +4,17 @@ from __future__ import annotations
 
 import shutil
 import typing as t
-
-from uuid import uuid4
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 from singer_sdk.testing import get_target_test_class
-
 
 from target_parquet.target import TargetParquet
 
 TEST_OUTPUT_DIR = Path(f".output/test_{uuid4()}/")
 SAMPLE_CONFIG: dict[str, t.Any] = {
-    'destination_path': str(TEST_OUTPUT_DIR),
+    "destination_path": str(TEST_OUTPUT_DIR),
 }
 
 
@@ -47,4 +45,3 @@ class TestTargetParquet(StandardTargetTests):  # type: ignore[misc, valid-type]
         test_output_dir.mkdir(parents=True, exist_ok=True)
         yield test_output_dir
         shutil.rmtree(test_output_dir)
-

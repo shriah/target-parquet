@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import logging
-from typing import Dict, List
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -27,7 +28,9 @@ EXTENSION_MAPPING = {
 logger = logging.getLogger(__name__)
 
 
-def _field_type_to_pyarrow_field(field_name: str, input_types: dict, required_fields: list[str]) -> pa.Field:
+def _field_type_to_pyarrow_field(
+    field_name: str, input_types: dict, required_fields: list[str]
+) -> pa.Field:
     types = input_types.get("type", [])
     # If type is not defined, check if anyOf is defined
     if not types:
@@ -42,13 +45,14 @@ def _field_type_to_pyarrow_field(field_name: str, input_types: dict, required_fi
     nullable = "NULL" in types_uppercase or field_name not in required_fields
     if "NULL" in types_uppercase:
         types_uppercase.remove("NULL")
-    input_type = list(types_uppercase)[0] if types_uppercase else ""
+    input_type = next(iter(types_uppercase)) if types_uppercase else ""
     pyarrow_type = FIELD_TYPE_TO_PYARROW.get(input_type, pa.string())
     return pa.field(field_name, pyarrow_type, nullable)
 
 
 def flatten_schema_to_pyarrow_schema(flatten_schema_dictionary: dict) -> pa.Schema:
-    """Function that converts a flatten schema to a pyarrow schema in a defined order
+    """Function that converts a flatten schema to a pyarrow schema in a defined order.
+
     E.g:
      dictionary = {
         'properties': {
@@ -58,7 +62,8 @@ def flatten_schema_to_pyarrow_schema(flatten_schema_dictionary: dict) -> pa.Sche
              'key_2__key_4__key_6': {'type': ['null', 'array']}
            }
         }
-    By calling the function with the dictionary above as parameter, you will get the following structure:
+    By calling the function with the dictionary above as parameter,
+    you will get the following structure:
         pa.schema([
              pa.field('key_1', pa.int64()),
              pa.field('key_2__key_3', pa.string()),
@@ -70,22 +75,24 @@ def flatten_schema_to_pyarrow_schema(flatten_schema_dictionary: dict) -> pa.Sche
     required_fields = flatten_schema_dictionary.get("required", [])
     return pa.schema(
         [
-            _field_type_to_pyarrow_field(field_name, field_input_types, required_fields=required_fields)
+            _field_type_to_pyarrow_field(
+                field_name, field_input_types, required_fields=required_fields
+            )
             for field_name, field_input_types in flatten_schema.items()
         ]
     )
 
 
-def create_pyarrow_table(list_dict: List[dict], schema: pa.Schema) -> pa.Table:
-    """Create a pyarrow Table from a python list of dict"""
+def create_pyarrow_table(list_dict: list[dict], schema: pa.Schema) -> pa.Table:
+    """Create a pyarrow Table from a python list of dict."""
     data = {f: [row.get(f) for row in list_dict] for f in schema.names}
     return pa.table(data).cast(schema)
 
 
 def concat_tables(
-    records: List[Dict], pyarrow_table: pa.Table, pyarrow_schema: pa.Schema
-):
-    """Create a dataframe from records and concatenate with the existing one"""
+    records: list[dict], pyarrow_table: pa.Table, pyarrow_schema: pa.Schema
+) -> pa.Table:
+    """Create a dataframe from records and concatenate with the existing one."""
     if not records:
         return pyarrow_table
     new_table = create_pyarrow_table(records, pyarrow_schema)
@@ -95,11 +102,11 @@ def concat_tables(
 def write_parquet_file(
     table: pa.Table,
     path: str,
-    compression_method="gzip",
-    basename_template=None,
-    partition_cols=None,
+    compression_method: str = "gzip",
+    basename_template: str | None = None,
+    partition_cols: list[str] | None = None,
 ) -> None:
-    """Write a pyarrow table to a parquet file"""
+    """Write a pyarrow table to a parquet file."""
     pq.write_to_dataset(
         table,
         root_path=path,
@@ -114,5 +121,5 @@ def write_parquet_file(
 
 
 def get_pyarrow_table_size(table: pa.Table) -> float:
-    """Return the size of a pyarrow table in MB"""
+    """Return the size of a pyarrow table in MB."""
     return bytes_to_mb(table.nbytes)

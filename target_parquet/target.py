@@ -24,25 +24,29 @@ class TargetParquet(Target):
         th.Property(
             "compression_method",
             th.StringType,
-            description="(Default - gzip) Compression methods have to be supported by Pyarrow, and currently the compression modes available are - snappy, zstd, brotli and gzip.",
+            description="(Default - gzip) Compression methods have to be supported by Pyarrow, "
+            "and currently the compression modes available are - snappy, zstd, brotli and gzip.",
             default="gzip",
         ),
         th.Property(
             "max_pyarrow_table_size",
             th.IntegerType,
-            description="Max size of pyarrow table in MB (before writing to parquet file). It can control the memory usage of the target.",
+            description="Max size of pyarrow table in MB (before writing to parquet file). "
+            "It can control the memory usage of the target.",
             default=800,
         ),
         th.Property(
             "max_batch_size",
             th.IntegerType,
-            description="Max records to write in one batch. It can control the memory usage of the target.",
+            description="Max records to write in one batch. "
+            "It can control the memory usage of the target.",
             default=10000,
         ),
         th.Property(
             "extra_fields",
             th.StringType,
-            description="Extra fields to add to the flattened record. (e.g. extra_col1=value1,extra_col2=value2)",
+            description="Extra fields to add to the flattened record. "
+            "(e.g. extra_col1=value1,extra_col2=value2)",
         ),
         th.Property(
             "extra_fields_types",

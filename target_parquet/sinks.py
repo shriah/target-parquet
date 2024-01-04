@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 
 from singer_sdk.helpers._flattening import flatten_record, flatten_schema
 from singer_sdk.sinks import BatchSink
@@ -24,7 +24,9 @@ class ParquetSink(BatchSink):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.pyarrow_df = None
-        self.destination_path = os.path.join(self.config.get('destination_path', "output"), self.stream_name)
+        self.destination_path = os.path.join(
+            self.config.get("destination_path", "output"), self.stream_name
+        )
         self.files_saved = 0
 
         # Extra fields
@@ -36,8 +38,8 @@ class ParquetSink(BatchSink):
         self.extra_values_types = {}
         if self.config.get("extra_fields_types"):
             for field_type in self.config["extra_fields_types"].split(","):
-                field_name, field_type = field_type.split("=")
-                self.extra_values_types[field_name] = {"type": [field_type]}
+                field_name, _type = field_type.split("=")
+                self.extra_values_types[field_name] = {"type": [_type]}
 
         # Create pyarrow schema
         self.flatten_schema = flatten_schema(
@@ -56,15 +58,16 @@ class ParquetSink(BatchSink):
 
     @property
     def basename_template(self) -> str:
-        timestamp = datetime.utcfromtimestamp(self.sync_started_at / 1000).strftime(
-            "%Y%m%d_%H%M%S"
-        )
+        """Returns the basename template for the parquet file."""
+        timestamp = datetime.fromtimestamp(
+            self.sync_started_at / 1000, tz=UTC
+        ).strftime("%Y%m%d_%H%M%S")
         basename_template = f"{self.stream_name}-{timestamp}-{self.files_saved}-{{i}}"
         self.files_saved += 1
         return basename_template
 
-    def validation(self):
-        # Extra fields validation
+    def validation(self) -> None:
+        """Extra fields and Partition Cols validation."""
         assert bool(self.extra_values) == bool(
             self.extra_values_types
         ), "extra_fields and extra_fields_types must be both set or both unset"
@@ -116,7 +119,7 @@ class ParquetSink(BatchSink):
             context.get("records", []), self.pyarrow_df, self.pyarrow_schema
         )
         self.logger.info(
-            f'Pyarrow table size: {self.pyarrow_df.nbytes} | ({len(self.pyarrow_df)} rows)'
+            f"Pyarrow table size: {self.pyarrow_df.nbytes} | ({len(self.pyarrow_df)} rows)"
         )
         del context["records"]
         if (
@@ -125,8 +128,8 @@ class ParquetSink(BatchSink):
         ):
             self.write_file()
 
-    def write_file(self):
-        """Write a local file"""
+    def write_file(self) -> None:
+        """Write a local file."""
         if self.pyarrow_df is not None:
             write_parquet_file(
                 self.pyarrow_df,
@@ -138,7 +141,6 @@ class ParquetSink(BatchSink):
             self.pyarrow_df = None
 
     def clean_up(self) -> None:
-        """Perform any clean up actions required at end of a stream"""
+        """Perform any clean up actions required at end of a stream."""
         self.write_file()
         super().clean_up()
-

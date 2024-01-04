@@ -1,15 +1,23 @@
 import os
 
-import pytest
-from singer_sdk.helpers._flattening import flatten_schema
-from target_parquet.utils.parquet import flatten_schema_to_pyarrow_schema, _field_type_to_pyarrow_field, \
-    create_pyarrow_table, concat_tables, write_parquet_file, get_pyarrow_table_size, EXTENSION_MAPPING
+import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
-import pandas as pd
+import pytest
+from singer_sdk.helpers._flattening import flatten_schema
+
+from target_parquet.utils.parquet import (
+    EXTENSION_MAPPING,
+    _field_type_to_pyarrow_field,
+    concat_tables,
+    create_pyarrow_table,
+    flatten_schema_to_pyarrow_schema,
+    get_pyarrow_table_size,
+    write_parquet_file,
+)
 
 
-@pytest.fixture
+@pytest.fixture()
 def sample_data():
     return [
         {"id": 1, "name": "Alice", "age": 25},
@@ -17,34 +25,44 @@ def sample_data():
         {"id": 3, "name": "Charlie", "age": 22},
     ]
 
-@pytest.fixture
+
+@pytest.fixture()
 def sample_schema():
-    return pa.schema([
-        ("id", pa.int64()),
-        ("name", pa.string()),
-        ("age", pa.int64()),
-    ])
+    return pa.schema(
+        [
+            ("id", pa.int64()),
+            ("name", pa.string()),
+            ("age", pa.int64()),
+        ]
+    )
 
 
 def test_flatten_schema_to_pyarrow_schema():
-    schema = {"type": "object",
-              "properties": {"str": {"type": ["null", "string"]},
-                             "int": {"type": ["null", "integer"]},
-                             "decimal": {"type": ["null", "number"]},
-                             "decimal2": {"type": ["null", "number"]},
-                             "date": {"type": ["null", "string"], "format": "date-time"},
-                             "datetime": {"type": ["null", "string"], "format": "date-time"},
-                             "boolean": {"type": ["null", "boolean"]}}}
+    schema = {
+        "type": "object",
+        "properties": {
+            "str": {"type": ["null", "string"]},
+            "int": {"type": ["null", "integer"]},
+            "decimal": {"type": ["null", "number"]},
+            "decimal2": {"type": ["null", "number"]},
+            "date": {"type": ["null", "string"], "format": "date-time"},
+            "datetime": {"type": ["null", "string"], "format": "date-time"},
+            "boolean": {"type": ["null", "boolean"]},
+        },
+    }
     flatten_schema_result = flatten_schema(schema, max_level=20)
     pyarrow_schema = flatten_schema_to_pyarrow_schema(flatten_schema_result)
-    expected_pyarrow_schema = pa.schema([
-        pa.field('str', pa.string()),
-        pa.field('int', pa.int64()),
-        pa.field('decimal', pa.float64()),
-        pa.field('decimal2', pa.float64()),
-        pa.field('date', pa.string()),
-        pa.field('datetime', pa.string()),
-        pa.field('boolean', pa.bool_())])
+    expected_pyarrow_schema = pa.schema(
+        [
+            pa.field("str", pa.string()),
+            pa.field("int", pa.int64()),
+            pa.field("decimal", pa.float64()),
+            pa.field("decimal2", pa.float64()),
+            pa.field("date", pa.string()),
+            pa.field("datetime", pa.string()),
+            pa.field("boolean", pa.bool_()),
+        ]
+    )
     assert pyarrow_schema == expected_pyarrow_schema
 
 
@@ -67,12 +85,14 @@ def test_flatten_schema_to_pyarrow_schema():
             "unknown_type",
             {"type": "unknown_type"},
             pa.field("unknown_type", pa.string(), True),
-            id="unknown_type"
+            id="unknown_type",
         ),
     ],
 )
 def test_field_type_to_pyarrow_field(field_name, input_types, expected_result):
-    result = _field_type_to_pyarrow_field(field_name, input_types, ['example_field_anyof'])
+    result = _field_type_to_pyarrow_field(
+        field_name, input_types, ["example_field_anyof"]
+    )
     assert result == expected_result
 
 
@@ -109,7 +129,9 @@ def test_concat_tables(sample_data, sample_schema):
 
 @pytest.mark.parametrize("compression_method", ["gzip", "snappy"])
 @pytest.mark.parametrize("partition_cols", [None, ["name"]])
-def test_write_parquet_file(tmpdir, sample_data, sample_schema, compression_method, partition_cols):
+def test_write_parquet_file(
+    tmpdir, sample_data, sample_schema, compression_method, partition_cols
+):
     # Create a PyArrow table from sample data
     table = create_pyarrow_table(sample_data, sample_schema)
 
@@ -120,9 +142,9 @@ def test_write_parquet_file(tmpdir, sample_data, sample_schema, compression_meth
     write_parquet_file(
         table,
         str(parquet_path),
-        basename_template='test_parquet_file-{i}',
+        basename_template="test_parquet_file-{i}",
         compression_method=compression_method,
-        partition_cols=partition_cols
+        partition_cols=partition_cols,
     )
 
     # Check if the Parquet file was created
