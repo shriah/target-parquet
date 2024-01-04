@@ -1,6 +1,5 @@
 import logging
-import os
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 import pyarrow as pa
 import pyarrow.parquet as pq

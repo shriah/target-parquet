@@ -25,10 +25,7 @@ class ParquetSink(BatchSink):
         super().__init__(*args, **kwargs)
         self.pyarrow_df = None
         self.destination_path = os.path.join(self.config.get('destination_path', "output"), self.stream_name)
-        timestamp = datetime.utcfromtimestamp(self.sync_started_at / 1000).strftime(
-            "%Y%m%d_%H%M%S"
-        )
-        self.basename_template = f"{self.stream_name}-{timestamp}-{{i}}"
+        self.files_saved = 0
 
         # Extra fields
         self.extra_values = (
@@ -56,6 +53,15 @@ class ParquetSink(BatchSink):
         )
 
         self.validation()
+
+    @property
+    def basename_template(self) -> str:
+        timestamp = datetime.utcfromtimestamp(self.sync_started_at / 1000).strftime(
+            "%Y%m%d_%H%M%S"
+        )
+        basename_template = f"{self.stream_name}-{timestamp}-{self.files_saved}-{{i}}"
+        self.files_saved += 1
+        return basename_template
 
     def validation(self):
         # Extra fields validation
@@ -108,6 +114,9 @@ class ParquetSink(BatchSink):
         )
         self.pyarrow_df = concat_tables(
             context.get("records", []), self.pyarrow_df, self.pyarrow_schema
+        )
+        self.logger.info(
+            f'Pyarrow table size: {self.pyarrow_df.nbytes} | ({len(self.pyarrow_df)} rows)'
         )
         del context["records"]
         if (
