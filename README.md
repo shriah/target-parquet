@@ -4,25 +4,13 @@
 
 Build with the [Meltano Target SDK](https://sdk.meltano.com).
 
-<!--
-
-Developer TODO: Update the below as needed to correctly describe the install procedure. For instance, if you do not have a PyPi repo, or if you want users to directly install from your git repo, you can modify this step as appropriate.
-
 ## Installation
-
-Install from PyPi:
-
-```bash
-pipx install target-parquet
-```
 
 Install from GitHub:
 
 ```bash
 pipx install git+https://github.com/ORG_NAME/target-parquet.git@main
 ```
-
--->
 
 ## Configuration
 
@@ -37,6 +25,24 @@ This section can be created by copy-pasting the CLI output from:
 target-parquet --about --format=markdown
 ```
 -->
+
+##### Capabilities
+
+* `about`
+* `stream-maps`
+* `schema-flattening`
+
+#### Settings
+
+| Setting               | Required | Default | Description |
+|:----------------------|:--------:|:-------:|:------------|
+| destination_path      | False    | None    | Destination Path |
+| compression_method    | False    | gzip    | (Default - gzip) Compression methods have to be supported by Pyarrow, and currently the compression modes available are - snappy, zstd, brotli and gzip. |
+| max_pyarrow_table_size| False    |     800 | Max size of pyarrow table in MB (before writing to parquet file). It can control the memory usage of the target. |
+| max_batch_size        | False    |   10000 | Max records to write in one batch. It can control the memory usage of the target. |
+| extra_fields          | False    | None    | Extra fields to add to the flattened record. (e.g. extra_col1=value1,extra_col2=value2) |
+| extra_fields_types    | False    | None    | Extra fields types. (e.g. extra_col1=string,extra_col2=integer) |
+| partition_cols        | False    | None    | Extra fields to add to the flattened record. (e.g. extra_col1,extra_col2) |
 
 A full list of supported settings and capabilities for this
 target is available by running:
@@ -53,9 +59,6 @@ environment variable is set either in the terminal context or in the `.env` file
 
 ### Source Authentication and Authorization
 
-<!--
-Developer TODO: If your target requires special access on the destination system, or any special authentication requirements, provide those here.
--->
 
 ## Usage
 
@@ -100,12 +103,6 @@ poetry run target-parquet --help
 
 _**Note:** This target will work in any Singer environment and does not require Meltano.
 Examples here are for convenience and to streamline end-to-end orchestration scenarios._
-
-<!--
-Developer TODO:
-Your project comes with a custom `meltano.yml` project file already created. Open the `meltano.yml` and follow any "TODO" items listed in
-the file.
--->
 
 Next, install Meltano (if you haven't already) and any needed plugins:
 
