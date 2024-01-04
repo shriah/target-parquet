@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from singer_sdk.helpers._flattening import flatten_record, flatten_schema
 from singer_sdk.sinks import BatchSink
@@ -60,7 +60,7 @@ class ParquetSink(BatchSink):
     def basename_template(self) -> str:
         """Returns the basename template for the parquet file."""
         timestamp = datetime.fromtimestamp(
-            self.sync_started_at / 1000, tz=UTC
+            self.sync_started_at / 1000, tz=timezone.utc
         ).strftime("%Y%m%d_%H%M%S")
         basename_template = f"{self.stream_name}-{timestamp}-{self.files_saved}-{{i}}"
         self.files_saved += 1

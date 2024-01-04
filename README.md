@@ -16,16 +16,6 @@ pipx install git+https://github.com/ORG_NAME/target-parquet.git@main
 
 ### Accepted Config Options
 
-<!--
-Developer TODO: Provide a list of config options accepted by the target.
-
-This section can be created by copy-pasting the CLI output from:
-
-```
-target-parquet --about --format=markdown
-```
--->
-
 ##### Capabilities
 
 * `about`
