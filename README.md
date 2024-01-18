@@ -9,7 +9,7 @@ Build with the [Meltano Target SDK](https://sdk.meltano.com).
 Install from GitHub:
 
 ```bash
-pipx install git+https://github.com/ORG_NAME/target-parquet.git@main
+pipx install git+https://github.com/Automattic/target-parquet.git@main
 ```
 
 ## Configuration
@@ -26,13 +26,13 @@ pipx install git+https://github.com/ORG_NAME/target-parquet.git@main
 
 | Setting               | Required | Default | Description |
 |:----------------------|:--------:|:-------:|:------------|
-| destination_path      | False    | None    | Destination Path |
-| compression_method    | False    | gzip    | (Default - gzip) Compression methods have to be supported by Pyarrow, and currently the compression modes available are - snappy, zstd, brotli and gzip. |
-| max_pyarrow_table_size| False    |     800 | Max size of pyarrow table in MB (before writing to parquet file). It can control the memory usage of the target. |
-| max_batch_size        | False    |   10000 | Max records to write in one batch. It can control the memory usage of the target. |
-| extra_fields          | False    | None    | Extra fields to add to the flattened record. (e.g. extra_col1=value1,extra_col2=value2) |
-| extra_fields_types    | False    | None    | Extra fields types. (e.g. extra_col1=string,extra_col2=integer) |
-| partition_cols        | False    | None    | Extra fields to add to the flattened record. (e.g. extra_col1,extra_col2) |
+| destination_path      | False    | output  | Destination Path |
+| compression_method    | False    |  gzip   | (Default - gzip) Compression methods have to be supported by Pyarrow, and currently the compression modes available are - snappy, zstd, brotli and gzip. |
+| max_pyarrow_table_size| False    |   800   | Max size of pyarrow table in MB (before writing to parquet file). It can control the memory usage of the target. |
+| max_batch_size        | False    |  10000  | Max records to write in one batch. It can control the memory usage of the target. |
+| extra_fields          | False    |  None   | Extra fields to add to the flattened record. (e.g. extra_col1=value1,extra_col2=value2) |
+| extra_fields_types    | False    |  None   | Extra fields types. (e.g. extra_col1=string,extra_col2=integer) |
+| partition_cols        | False    |  None   | Extra fields to add to the flattened record. (e.g. extra_col1,extra_col2) |
 
 A full list of supported settings and capabilities for this
 target is available by running:

@@ -27,7 +27,7 @@ s3 = ["fs-s3fs"]
 
 [tool.ruff]
 src = ["target_parquet"]
-target-version = "py37"
+target-version = "py39"
 exclude = ["tests"]
 
 [tool.ruff.lint]
