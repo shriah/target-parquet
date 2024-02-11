@@ -96,6 +96,7 @@ class ParquetSink(BatchSink):
             record: Individual record in the stream.
             context: Stream partition or context dictionary.
         """
+        self.logger.info('Recived record: %s', record)
         record_flatten = (
             flatten_record(
                 record,
@@ -104,6 +105,7 @@ class ParquetSink(BatchSink):
             )
             | self.extra_values
         )
+        self.logger.info('Flatten record: %s', record_flatten)
         super().process_record(record_flatten, context)
 
     def process_batch(self, context: dict) -> None:
