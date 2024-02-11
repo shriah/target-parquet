@@ -42,9 +42,11 @@ class ParquetSink(BatchSink):
                 self.extra_values_types[field_name] = {"type": [_type]}
 
         # Create pyarrow schema
+        self.logger.info(f"Schema: {self.schema}")
         self.flatten_schema = flatten_schema(
             self.schema, max_level=self.flatten_max_level
         )
+        self.logger.info(f"Flatten schema: {self.flatten_schema}")
         self.flatten_schema.get("properties", {}).update(self.extra_values_types)
         self.pyarrow_schema = flatten_schema_to_pyarrow_schema(self.flatten_schema)
 
@@ -96,8 +98,6 @@ class ParquetSink(BatchSink):
             record: Individual record in the stream.
             context: Stream partition or context dictionary.
         """
-        self.logger.info('Received record: %s', record)
-        self.logger.info('flatten_schema: %s', self.flatten_schema)
         record_flatten = (
             flatten_record(
                 record,
@@ -106,7 +106,6 @@ class ParquetSink(BatchSink):
             )
             | self.extra_values
         )
-        self.logger.info('Flatten record: %s', record_flatten)
         super().process_record(record_flatten, context)
 
     def process_batch(self, context: dict) -> None:
