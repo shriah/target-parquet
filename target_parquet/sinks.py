@@ -46,7 +46,6 @@ class ParquetSink(BatchSink):
             self.schema, max_level=self.flatten_max_level
         )
         self.flatten_schema.get("properties", {}).update(self.extra_values_types)
-        self.logger.info('flatten_schema: %s', self.flatten_schema)
         self.pyarrow_schema = flatten_schema_to_pyarrow_schema(self.flatten_schema)
 
         self.partition_cols = (
@@ -97,7 +96,8 @@ class ParquetSink(BatchSink):
             record: Individual record in the stream.
             context: Stream partition or context dictionary.
         """
-        self.logger.info('Recived record: %s', record)
+        self.logger.info('Received record: %s', record)
+        self.logger.info('flatten_schema: %s', self.flatten_schema)
         record_flatten = (
             flatten_record(
                 record,
