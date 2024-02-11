@@ -46,6 +46,7 @@ class ParquetSink(BatchSink):
             self.schema, max_level=self.flatten_max_level
         )
         self.flatten_schema.get("properties", {}).update(self.extra_values_types)
+        self.logger.info('flatten_schema: %s', self.flatten_schema)
         self.pyarrow_schema = flatten_schema_to_pyarrow_schema(self.flatten_schema)
 
         self.partition_cols = (
