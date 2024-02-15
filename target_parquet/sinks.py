@@ -42,11 +42,9 @@ class ParquetSink(BatchSink):
                 self.extra_values_types[field_name] = {"type": [_type]}
 
         # Create pyarrow schema
-        self.logger.info(f"Schema: {self.schema}")
         self.flatten_schema = flatten_schema(
             self.schema, max_level=self.flatten_max_level
         )
-        self.logger.info(f"Flatten schema: {self.flatten_schema}")
         self.flatten_schema.get("properties", {}).update(self.extra_values_types)
         self.pyarrow_schema = flatten_schema_to_pyarrow_schema(self.flatten_schema)
 
