@@ -5,21 +5,21 @@ from __future__ import annotations
 import os
 from datetime import datetime, timezone
 
-from singer_sdk.helpers._flattening import flatten_record, flatten_schema
+from singer_sdk.helpers._flattening import flatten_schema
 from singer_sdk.sinks import BatchSink
 
 from target_parquet.utils.parquet import (
     concat_tables,
     flatten_schema_to_pyarrow_schema,
     get_pyarrow_table_size,
-    write_parquet_file,
+    write_parquet_file, flatten_record,
 )
 
 
 class ParquetSink(BatchSink):
     """parquet target sink class."""
 
-    flatten_max_level = 20  # Max level of nesting to flatten
+    flatten_max_level = 100  # Max level of nesting to flatten
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

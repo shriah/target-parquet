@@ -10,6 +10,7 @@ from singer_sdk import typing as th
 from singer_sdk.testing import target_sync_test
 
 from target_parquet.target import TargetParquet
+from target_parquet.utils.parquet import flatten_record
 
 
 @pytest.fixture(scope="session")
@@ -103,7 +104,7 @@ def example2_schema_messages_mixed():
 
 
 def test_e2e_create_file(
-    monkeypatch, test_output_dir, sample_config, example1_schema_messages
+        monkeypatch, test_output_dir, sample_config, example1_schema_messages
 ):
     """Test that the target creates a file with the expected records"""
     monkeypatch.setattr("time.time", lambda: 1700000000)
@@ -115,7 +116,7 @@ def test_e2e_create_file(
     )
 
     assert (
-        len(os.listdir(test_output_dir / example1_schema_messages["stream_name"])) == 1
+            len(os.listdir(test_output_dir / example1_schema_messages["stream_name"])) == 1
     )
 
     expected = pd.DataFrame({"col_a": ["samplerow1", "samplerow2"]})
@@ -124,7 +125,7 @@ def test_e2e_create_file(
 
 
 def test_e2e_create_file_mixed_schemas(
-    monkeypatch, test_output_dir, sample_config, example2_schema_messages_mixed
+        monkeypatch, test_output_dir, sample_config, example2_schema_messages_mixed
 ):
     """Test that the target creates a file for each schema if we have mixed schemas"""
     monkeypatch.setattr("time.time", lambda: 1700000000)
@@ -136,20 +137,20 @@ def test_e2e_create_file_mixed_schemas(
     )
 
     assert (
-        len(
-            os.listdir(
-                test_output_dir / example2_schema_messages_mixed["stream_names"][0]
+            len(
+                os.listdir(
+                    test_output_dir / example2_schema_messages_mixed["stream_names"][0]
+                )
             )
-        )
-        == 1
+            == 1
     )
     assert (
-        len(
-            os.listdir(
-                test_output_dir / example2_schema_messages_mixed["stream_names"][1]
+            len(
+                os.listdir(
+                    test_output_dir / example2_schema_messages_mixed["stream_names"][1]
+                )
             )
-        )
-        == 1
+            == 1
     )
 
     expected = pd.DataFrame({"col_a": ["samplerow1"] * 3})
@@ -352,7 +353,7 @@ def test_e2e_multiple_files(monkeypatch, test_output_dir, sample_config):
 
 
 def test_e2e_extra_fields(
-    monkeypatch, test_output_dir, sample_config, example1_schema_messages
+        monkeypatch, test_output_dir, sample_config, example1_schema_messages
 ):
     """Test if the target can add extra fields in the record"""
     monkeypatch.setattr("time.time", lambda: 1700000000)
@@ -360,17 +361,17 @@ def test_e2e_extra_fields(
     target_sync_test(
         TargetParquet(
             config=sample_config
-            | {
-                "extra_fields": "field1=value1,field2=1",
-                "extra_fields_types": "field1=string,field2=integer",
-            }
+                   | {
+                       "extra_fields": "field1=value1,field2=1",
+                       "extra_fields_types": "field1=string,field2=integer",
+                   }
         ),
         input=StringIO(example1_schema_messages["messages"]),
         finalize=True,
     )
 
     assert (
-        len(os.listdir(test_output_dir / example1_schema_messages["stream_name"])) == 1
+            len(os.listdir(test_output_dir / example1_schema_messages["stream_name"])) == 1
     )
 
     expected = pd.DataFrame(
@@ -385,7 +386,7 @@ def test_e2e_extra_fields(
 
 
 def test_e2e_partition_cols(
-    monkeypatch, test_output_dir, sample_config, example1_schema_messages
+        monkeypatch, test_output_dir, sample_config, example1_schema_messages
 ):
     """Test if the target can partition the data"""
     monkeypatch.setattr("time.time", lambda: 1700000000)
@@ -393,25 +394,25 @@ def test_e2e_partition_cols(
     target_sync_test(
         TargetParquet(
             config=sample_config
-            | {
-                "extra_fields": "field1=value1",
-                "extra_fields_types": "field1=string",
-                "partition_cols": "field1",
-            }
+                   | {
+                       "extra_fields": "field1=value1",
+                       "extra_fields_types": "field1=string",
+                       "partition_cols": "field1",
+                   }
         ),
         input=StringIO(example1_schema_messages["messages"]),
         finalize=True,
     )
 
     assert (
-        len(
-            os.listdir(
-                test_output_dir
-                / example1_schema_messages["stream_name"]
-                / "field1=value1"
+            len(
+                os.listdir(
+                    test_output_dir
+                    / example1_schema_messages["stream_name"]
+                    / "field1=value1"
+                )
             )
-        )
-        == 1
+            == 1
     )
 
     expected = pd.DataFrame({"col_a": ["samplerow1", "samplerow2"]})
@@ -422,12 +423,12 @@ def test_e2e_partition_cols(
 
 
 def test_e2e_extra_fields_validation(
-    monkeypatch, sample_config, example1_schema_messages
+        monkeypatch, sample_config, example1_schema_messages
 ):
     """Test extra_fields and extra_fields_types validation"""
     with pytest.raises(
-        AssertionError,
-        match="extra_fields and extra_fields_types must be both set or both unset",
+            AssertionError,
+            match="extra_fields and extra_fields_types must be both set or both unset",
     ):
         target_sync_test(
             TargetParquet(config=sample_config | {"extra_fields": "field1=value1"}),
@@ -436,8 +437,8 @@ def test_e2e_extra_fields_validation(
         )
 
     with pytest.raises(
-        AssertionError,
-        match="extra_fields and extra_fields_types must be both set or both unset",
+            AssertionError,
+            match="extra_fields and extra_fields_types must be both set or both unset",
     ):
         target_sync_test(
             TargetParquet(
@@ -448,16 +449,16 @@ def test_e2e_extra_fields_validation(
         )
 
     with pytest.raises(
-        AssertionError,
-        match="extra_fields and extra_fields_types must have the same keys",
+            AssertionError,
+            match="extra_fields and extra_fields_types must have the same keys",
     ):
         target_sync_test(
             TargetParquet(
                 config=sample_config
-                | {
-                    "extra_fields": "field1=value1,field2=1",
-                    "extra_fields_types": "field2=integer",
-                }
+                       | {
+                           "extra_fields": "field1=value1,field2=1",
+                           "extra_fields_types": "field2=integer",
+                       }
             ),
             input=StringIO(example1_schema_messages["messages"]),
             finalize=True,
@@ -465,7 +466,7 @@ def test_e2e_extra_fields_validation(
 
 
 def test_e2e_partition_cols_validation(
-    monkeypatch, sample_config, example1_schema_messages
+        monkeypatch, sample_config, example1_schema_messages
 ):
     """Test partition_cols validation"""
     with pytest.raises(AssertionError, match="partition_cols must be in the schema"):
@@ -474,3 +475,44 @@ def test_e2e_partition_cols_validation(
             input=StringIO(example1_schema_messages["messages"]),
             finalize=True,
         )
+
+
+@pytest.mark.parametrize("flattened_schema, max_level, expected, expected_exception", [
+    pytest.param({
+        'properties': {
+            'key_1': {'type': ['null', 'integer']},
+            'key_2__key_3': {'type': ['null', 'string']},
+            'key_2__key_4': {'type': ['null', 'object']},
+        }
+    }, None, {'key_1': 1, 'key_2__key_3': 'value', 'key_2__key_4': '{"key_5": 1, "key_6": ["a", "b"]}'}, None,
+        id='flattened schema provided'),
+    pytest.param(None, 99,
+                 {'key_1': 1,
+                  'key_2__key_3': 'value',
+                  'key_2__key_4__key_5': 1,
+                  'key_2__key_4__key_6': '["a", "b"]'}, None,
+                 id='flattened schema not provided'),
+    pytest.param(None, 1,
+                 {'key_1': 1, 'key_2__key_3': 'value', 'key_2__key_4': '{"key_5": 1, "key_6": ["a", "b"]}'}, None,
+                 id='max_level 2'),
+    pytest.param(None, None, None, AssertionError,
+                 id='no schema or max level provided'),
+])
+def test_flatten_record(flattened_schema, max_level, expected, expected_exception):
+    """Test flatten_record to obey the max_level and flattened_schema parameters."""
+    record = {
+        'key_1': 1,
+        'key_2': {
+            'key_3': 'value',
+            'key_4': {
+                'key_5': 1,
+                'key_6': ['a', 'b']
+            }
+        }
+    }
+    if expected_exception:
+        with pytest.raises(expected_exception):
+            flatten_record(record, max_level=max_level, flattened_schema=flattened_schema)
+    else:
+        result = flatten_record(record, max_level=max_level, flattened_schema=flattened_schema)
+        assert expected == result
