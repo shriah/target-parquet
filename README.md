@@ -1,83 +1,119 @@
 # target-parquet
 
-A [Singer](https://singer.io) target that writes data to parquet files. This target is based on [`target-csv`] [Targetcsv] and the code was adapted to generate parquet files instead of csv files.
+`target-parquet` is a Singer target for parquet.
 
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+Build with the [Meltano Target SDK](https://sdk.meltano.com).
 
-## How to use it
+## Installation
 
-`target-parquet` works with a [Singer Tap] in order to move data ingested by the tap into parquet files.
-Note that the parquet file will be written once all the data is imported from the tap.
-
-### Install
-
-We will use [`tap-exchangeratesapi`][exchangeratesapi] to pull currency exchange rate data from a public data set as an example.
-
-First, make sure Python 3 is installed on your system or follow these installation instructions for [Linux] or [Mac].
-
-It is recommended to install each Tap and Target in a separate Python virtual environment to avoid conflicting dependencies between any Taps and Targets.
+Install from GitHub:
 
 ```bash
- # Install tap-exchangeratesapi in its own virtualenv
-python3 -m venv ~/.virtualenvs/tap-exchangeratesapi
-source ~/.virtualenvs/tap-exchangeratesapi/bin/activate
-pip3 install tap-exchangeratesapi
-deactivate
-
-# Install target-parquet in its own virtualenv
-python3 -m venv ~/.virtualenvs/target-parquet
-source ~/.virtualenvs/target-parquet/bin/activate
-pip3 install target-parquet
-deactivate
+pipx install git+https://github.com/Automattic/target-parquet.git@main
 ```
 
-### Run
+## Configuration
 
-We can now run `tap-exchangeratesapi` and pipe the output to `target-parquet`.
+### Accepted Config Options
+
+##### Capabilities
+
+* `about`
+* `stream-maps`
+* `schema-flattening`
+
+#### Settings
+
+| Setting               | Required | Default | Description |
+|:----------------------|:--------:|:-------:|:------------|
+| destination_path      | False    | output  | Destination Path |
+| compression_method    | False    |  gzip   | (Default - gzip) Compression methods have to be supported by Pyarrow, and currently the compression modes available are - snappy, zstd, brotli and gzip. |
+| max_pyarrow_table_size| False    |   800   | Max size of pyarrow table in MB (before writing to parquet file). It can control the memory usage of the target. |
+| max_batch_size        | False    |  10000  | Max records to write in one batch. It can control the memory usage of the target. |
+| extra_fields          | False    |  None   | Extra fields to add to the flattened record. (e.g. extra_col1=value1,extra_col2=value2) |
+| extra_fields_types    | False    |  None   | Extra fields types. (e.g. extra_col1=string,extra_col2=integer) |
+| partition_cols        | False    |  None   | Extra fields to add to the flattened record. (e.g. extra_col1,extra_col2) |
+
+A full list of supported settings and capabilities for this
+target is available by running:
 
 ```bash
-~/.virtualenvs/tap-exchangeratesapi/bin/tap-exchangeratesapi | ~/.virtualenvs/target-parquet/bin/target-parquet
+target-parquet --about
 ```
 
-By default, the data will be written into a file called `exchange_rate-{timestamp}.parquet` in your working directory.
+### Configure using environment variables
 
-### Optional Configuration
+This Singer target will automatically import any environment variables within the working directory's
+`.env` if the `--config=ENV` is provided, such that config values will be considered if a matching
+environment variable is set either in the terminal context or in the `.env` file.
 
-If you want to save the file in a specific location and not the working directory, then, you need to create a configuration file, in which you specify the path to the directory you are interested in and pass the `-c` argument to the target.
-Also, you can compress the parquet file by passing the `compression_method` argument in the configuration file. Note that, these compression methods have to be supported by `Pyarrow`, and at the moment (October, 2020), the only compression modes available are: snappy (recommended), zstd, brotli and gzip. The library will check these, and default to `None` if something else is provided.
-For an example of the configuration file, see [config.sample.json](config.sample.json).
-There is also an `streams_in_separate_folder` option to create each stream in a different folder, as these are expected to come in different schema.
-The last config is the `force_output_schema_cast` that forces the cast to the provided schema before saving the parquet file (default is false which lets pyarrow automatically detect the data type for each column).
-To run `target-parquet` with the configuration file, use this command:
+### Source Authentication and Authorization
+
+
+## Usage
+
+You can easily run `target-parquet` by itself or in a pipeline using [Meltano](https://meltano.com/).
+
+### Executing the Target Directly
 
 ```bash
-~/.virtualenvs/tap-exchangeratesapi/bin/tap-exchangeratesapi | ~/.virtualenvs/target-parquet/bin/target-parquet -c config.json
+target-parquet --version
+target-parquet --help
+# Test using the "Carbon Intensity" sample:
+tap-carbon-intensity | target-parquet --config /path/to/target-parquet-config.json
 ```
 
-### Setting the Logging Level
+## Developer Resources
 
-There are two ways to set the logging level. If both are set, the config file has higher priority. The default value is `INFO`.
+Follow these instructions to contribute to this project.
 
-- `LOGGER_LEVEL` Enviroment variable. Set it to INFO, DEBUG or any other valid value
-- config file. Set the same values in the `logging_level` key.
-
-[singer tap]: https://singer.io
-[targetcsv]: https://github.com/singer-io/target-csv
-[exchangeratesapi]: https://github.com/singer-io/tap-exchangeratesapi
-[mac]: http://docs.python-guide.org/en/latest/starting/install3/osx/
-[linux]: https://docs.python-guide.org/starting/install3/linux/
-
-
-### Development
-
-To install development required packages run
+### Initialize your Development Environment
 
 ```bash
-pip install -e ".[dev]"
+pipx install poetry
+poetry install
 ```
 
-In order to run all tests run
+### Create and Run Tests
+
+Create tests within the `tests` subfolder and
+  then run:
 
 ```bash
-pytest
+poetry run pytest
 ```
+
+You can also test the `target-parquet` CLI interface directly using `poetry run`:
+
+```bash
+poetry run target-parquet --help
+```
+
+### Testing with [Meltano](https://meltano.com/)
+
+_**Note:** This target will work in any Singer environment and does not require Meltano.
+Examples here are for convenience and to streamline end-to-end orchestration scenarios._
+
+Next, install Meltano (if you haven't already) and any needed plugins:
+
+```bash
+# Install meltano
+pipx install meltano
+# Initialize meltano within this directory
+cd target-parquet
+meltano install
+```
+
+Now you can test and orchestrate using Meltano:
+
+```bash
+# Test invocation:
+meltano invoke target-parquet --version
+# OR run a test `elt` pipeline with the Carbon Intensity sample tap:
+meltano run tap-carbon-intensity target-parquet
+```
+
+### SDK Dev Guide
+
+See the [dev guide](https://sdk.meltano.com/en/latest/dev_guide.html) for more instructions on how to use the Meltano Singer SDK to
+develop your own Singer taps and targets.
