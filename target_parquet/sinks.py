@@ -5,14 +5,14 @@ from __future__ import annotations
 import os
 from datetime import datetime, timezone
 
-from singer_sdk.helpers._flattening import flatten_schema
+from singer_sdk.helpers._flattening import flatten_schema, flatten_record
 from singer_sdk.sinks import BatchSink
 
 from target_parquet.utils.parquet import (
     concat_tables,
     flatten_schema_to_pyarrow_schema,
     get_pyarrow_table_size,
-    write_parquet_file, flatten_record,
+    write_parquet_file,
 )
 
 

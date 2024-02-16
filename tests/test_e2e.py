@@ -10,7 +10,6 @@ from singer_sdk import typing as th
 from singer_sdk.testing import target_sync_test
 
 from target_parquet.target import TargetParquet
-from target_parquet.utils.parquet import flatten_record
 
 
 @pytest.fixture(scope="session")
@@ -475,44 +474,3 @@ def test_e2e_partition_cols_validation(
             input=StringIO(example1_schema_messages["messages"]),
             finalize=True,
         )
-
-
-@pytest.mark.parametrize("flattened_schema, max_level, expected, expected_exception", [
-    pytest.param({
-        'properties': {
-            'key_1': {'type': ['null', 'integer']},
-            'key_2__key_3': {'type': ['null', 'string']},
-            'key_2__key_4': {'type': ['null', 'object']},
-        }
-    }, None, {'key_1': 1, 'key_2__key_3': 'value', 'key_2__key_4': '{"key_5": 1, "key_6": ["a", "b"]}'}, None,
-        id='flattened schema provided'),
-    pytest.param(None, 99,
-                 {'key_1': 1,
-                  'key_2__key_3': 'value',
-                  'key_2__key_4__key_5': 1,
-                  'key_2__key_4__key_6': '["a", "b"]'}, None,
-                 id='flattened schema not provided'),
-    pytest.param(None, 1,
-                 {'key_1': 1, 'key_2__key_3': 'value', 'key_2__key_4': '{"key_5": 1, "key_6": ["a", "b"]}'}, None,
-                 id='max_level 2'),
-    pytest.param(None, None, None, AssertionError,
-                 id='no schema or max level provided'),
-])
-def test_flatten_record(flattened_schema, max_level, expected, expected_exception):
-    """Test flatten_record to obey the max_level and flattened_schema parameters."""
-    record = {
-        'key_1': 1,
-        'key_2': {
-            'key_3': 'value',
-            'key_4': {
-                'key_5': 1,
-                'key_6': ['a', 'b']
-            }
-        }
-    }
-    if expected_exception:
-        with pytest.raises(expected_exception):
-            flatten_record(record, max_level=max_level, flattened_schema=flattened_schema)
-    else:
-        result = flatten_record(record, max_level=max_level, flattened_schema=flattened_schema)
-        assert expected == result

@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-import simplejson as json
 import logging
-from typing import MutableMapping, Any
 
 import pyarrow as pa
 import pyarrow.parquet as pq
-from singer_sdk.helpers._flattening import flatten_key, _should_jsondump_value
 
 from target_parquet.utils import bytes_to_mb
 
@@ -126,89 +123,3 @@ def write_parquet_file(
 def get_pyarrow_table_size(table: pa.Table) -> float:
     """Return the size of a pyarrow table in MB."""
     return bytes_to_mb(table.nbytes)
-
-
-# TODO: Move to singer-sdk after this PR https://github.com/meltano/sdk/pull/2243 is merged
-def flatten_record(
-    record: dict,
-    flattened_schema: dict | None = None,
-    max_level: int | None = None,
-    separator: str = "__",
-) -> dict:
-    """Flatten a record up to max_level.
-
-    Args:
-        record: The record to flatten.
-        flattened_schema: The already flattened schema.
-        separator: The string used to separate concatenated key names. Defaults to "__".
-        max_level: The maximum depth of keys to flatten recursively.
-
-    Returns:
-        A flattened version of the record.
-    """
-    assert (flattened_schema is not None) or (max_level is not None), "flattened_schema or max_level must be provided"
-    max_level = max_level or 0
-
-    return _flatten_record(
-        record_node=record,
-        flattened_schema=flattened_schema,
-        separator=separator,
-        max_level=max_level,
-    )
-
-
-def _flatten_record(
-    record_node: MutableMapping[Any, Any],
-    *,
-    flattened_schema: dict | None = None,
-    parent_key: list[str] | None = None,
-    separator: str = "__",
-    level: int = 0,
-    max_level: int = 0,
-) -> dict:
-    """This recursive function flattens the record node.
-
-    The current invocation is expected to be at `level` and will continue recursively
-    until the provided `max_level` is reached.
-
-    Args:
-        record_node: The record node to flatten.
-        flattened_schema: The already flattened full schema for the record.
-        parent_key: The parent's key, provided as a list of node names.
-        separator: The string to use when concatenating key names.
-        level: The current recursion level (zero-based).
-        max_level: The max recursion level (zero-based, exclusive).
-
-    Returns:
-        A flattened version of the provided node.
-    """
-    if parent_key is None:
-        parent_key = []
-
-    items: list[tuple[str, Any]] = []
-    for k, v in record_node.items():
-        new_key = flatten_key(k, parent_key, separator)
-        if (isinstance(v, MutableMapping) and
-                ((flattened_schema and new_key not in flattened_schema.get('properties', {})) or
-                 (not flattened_schema and level < max_level))):
-            items.extend(
-                _flatten_record(
-                    v,
-                    flattened_schema=flattened_schema,
-                    parent_key=[*parent_key, k],
-                    separator=separator,
-                    level=level + 1,
-                    max_level=max_level,
-                ).items(),
-            )
-        else:
-            items.append(
-                (
-                    new_key,
-                    json.dumps(v, use_decimal=True)
-                    if _should_jsondump_value(k, v, flattened_schema)
-                    else v,
-                ),
-            )
-
-    return dict(items)
