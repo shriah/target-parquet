@@ -28,7 +28,8 @@ class ParquetSink(BatchSink):
             self.config.get("destination_path", "output"), self.stream_name
         )
         self.files_saved = 0
-
+        self.destination_type = self.config.get("destination_type")
+        self.azure_account = self.config.get("azure_account")
         # Extra fields
         self.extra_values = (
             dict([kv.split("=") for kv in self.config["extra_fields"].split(",")])
@@ -134,6 +135,8 @@ class ParquetSink(BatchSink):
             write_parquet_file(
                 self.pyarrow_df,
                 self.destination_path,
+                destination_type=self.destination_type,
+                azure_account=self.azure_account,
                 compression_method=self.config.get("compression", "gzip"),
                 basename_template=self.basename_template,
                 partition_cols=self.partition_cols,

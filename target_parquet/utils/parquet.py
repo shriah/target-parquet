@@ -5,6 +5,12 @@ import logging
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+import pyarrow.fs
+import pyarrowfs_adlgen2
+
+import azure.identity
+
+
 from target_parquet.utils import bytes_to_mb
 
 FIELD_TYPE_TO_PYARROW = {
@@ -102,17 +108,24 @@ def concat_tables(
 def write_parquet_file(
     table: pa.Table,
     path: str,
+    destination_type: str = "local",
+    azure_account: str = "",
     compression_method: str = "gzip",
     basename_template: str | None = None,
     partition_cols: list[str] | None = None,
 ) -> None:
     """Write a pyarrow table to a parquet file."""
+    fs = None
+    if destination_type == 'azure':
+         handler = pyarrowfs_adlgen2.AccountHandler.from_account_name(azure_account, azure.identity.DefaultAzureCredential())
+         fs = pyarrow.fs.PyFileSystem(handler)
     pq.write_to_dataset(
         table,
         root_path=path,
         compression=compression_method,
         partition_cols=partition_cols or None,
         use_threads=True,
+        filesystem=fs,
         use_legacy_dataset=False,
         basename_template=f"{basename_template}{EXTENSION_MAPPING[compression_method.lower()]}.parquet"
         if basename_template
